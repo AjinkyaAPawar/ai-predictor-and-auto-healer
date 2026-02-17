@@ -1,0 +1,25 @@
+# Compiled binaries
+bin/
+*.exe
+*.out
+
+# Generated/temporary deployment files
+deployments/deployment-production.yaml
+
+# Large files / local tools
+minikube-*
+kubectl
+kind
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

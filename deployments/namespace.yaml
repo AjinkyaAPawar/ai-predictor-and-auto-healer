@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: healer-system
+  labels:
+    app.kubernetes.io/name: k8s-ai-healer
+    app.kubernetes.io/managed-by: kubectl
