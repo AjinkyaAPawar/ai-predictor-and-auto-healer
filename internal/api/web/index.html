@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>K8s AI Healer — Ops Console</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">K8</div>
+        <div class="brand-text">
+          <div class="brand-title">AI Healer</div>
+          <div class="brand-sub">Autonomous Ops Console</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="nav-item active" href="#overview" data-route="overview">Overview</a>
+        <a class="nav-item" href="#workloads" data-route="workloads">Workloads</a>
+        <a class="nav-item" href="#timeline" data-route="timeline">Incident Timeline</a>
+        <a class="nav-item" href="#api" data-route="api">API</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="kv">
+          <div class="k">Live Link</div>
+          <div class="v" id="liveState">Connecting…</div>
+        </div>
+        <div class="kv">
+          <div class="k">Mode</div>
+          <div class="v" id="mode">—</div>
+        </div>
+        <div class="kv">
+          <div class="k">Last Sync</div>
+          <div class="v" id="lastSync">—</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="title" id="pageTitle">Overview</div>
+          <div class="subtitle" id="pageSubtitle">Cluster health, AI inference, and automated remediation</div>
+        </div>
+        <div class="topbar-right">
+          <div class="live" title="Live stream status">
+            <span class="dot" id="liveDot"></span>
+            <span class="live-text" id="liveText">Connecting…</span>
+          </div>
+          <div class="pill" id="systemHealth">HEALTHY</div>
+          <button class="btn" id="refreshBtn">Refresh</button>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="grid" id="kpiGrid"></div>
+
+        <div class="panel" id="panelOverview">
+          <div class="panel-head">
+            <div class="panel-title">Risk Heatmap</div>
+            <div class="panel-actions">
+              <span class="muted">Powered by snapshot + timeline</span>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="riskbar">
+              <div class="riskbar-row">
+                <div class="riskbar-label">Critical</div>
+                <div class="riskbar-track"><div class="riskbar-fill critical" id="riskCritical"></div></div>
+                <div class="riskbar-value" id="riskCriticalVal">0</div>
+              </div>
+              <div class="riskbar-row">
+                <div class="riskbar-label">High</div>
+                <div class="riskbar-track"><div class="riskbar-fill high" id="riskHigh"></div></div>
+                <div class="riskbar-value" id="riskHighVal">0</div>
+              </div>
+              <div class="riskbar-row">
+                <div class="riskbar-label">Medium</div>
+                <div class="riskbar-track"><div class="riskbar-fill medium" id="riskMed"></div></div>
+                <div class="riskbar-value" id="riskMedVal">0</div>
+              </div>
+              <div class="riskbar-row">
+                <div class="riskbar-label">Low</div>
+                <div class="riskbar-track"><div class="riskbar-fill low" id="riskLow"></div></div>
+                <div class="riskbar-value" id="riskLowVal">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" id="panelWorkloads" hidden>
+          <div class="panel-head">
+            <div class="panel-title">Workloads</div>
+            <div class="panel-actions">
+              <input class="input" id="search" placeholder="Filter by namespace/pod…" />
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table class="table" id="workloadsTable">
+                <thead>
+                  <tr>
+                    <th>Workload</th>
+                    <th>Status</th>
+                    <th>CPU</th>
+                    <th>Mem</th>
+                    <th>Restarts</th>
+                    <th>Risk</th>
+                    <th>AI Action</th>
+                    <th>Prediction</th>
+                  </tr>
+                </thead>
+                <tbody id="workloadsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" id="panelTimeline" hidden>
+          <div class="panel-head">
+            <div class="panel-title">Incident Timeline</div>
+            <div class="panel-actions">
+              <select class="select" id="timelineLimit">
+                <option value="100">Last 100</option>
+                <option value="300" selected>Last 300</option>
+                <option value="500">Last 500</option>
+              </select>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="timeline" id="timeline"></div>
+          </div>
+        </div>
+
+        <div class="panel" id="panelApi" hidden>
+          <div class="panel-head">
+            <div class="panel-title">API</div>
+          </div>
+          <div class="panel-body">
+            <div class="api-box">
+              <div class="api-row"><span class="code">GET</span> <span class="url">/api/v1/snapshot</span></div>
+              <div class="api-row"><span class="code">GET</span> <span class="url">/api/v1/timeline?limit=300</span></div>
+              <div class="api-row"><span class="code">GET</span> <span class="url">/api/v1/stream</span> <span class="muted">(SSE)</span></div>
+            </div>
+            <div class="muted" style="margin-top: 12px;">
+              Tip: keep this console full-screen during the demo. Live updates are driven by the SSE stream and backed by the snapshot.
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <footer class="footer">
+        <div class="muted">K8s AI Healer — Ops Console</div>
+        <div class="muted" id="footerMeta">—</div>
+      </footer>
+    </main>
+
+    <div class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer-head">
+        <div>
+          <div class="drawer-title" id="drawerTitle">Workload</div>
+          <div class="drawer-sub" id="drawerSub">—</div>
+        </div>
+        <button class="btn" id="drawerClose">Close</button>
+      </div>
+      <div class="drawer-body" id="drawerBody"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

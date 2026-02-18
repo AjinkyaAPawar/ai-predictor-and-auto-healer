@@ -1,44 +1,57 @@
 package api
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"path"
+	"strconv"
+	"strings"
 	"time"
 
-	"k8s-healer/internal/diagnostics"
+	"k8s-healer/internal/store"
 )
 
+//go:embed web/*
+var webFS embed.FS
+
 type APIServer struct {
-	autoHealer *diagnostics.AutoHealer
-	diagEngine *diagnostics.DiagnosticsEngine
-	port       string
+	store *store.OpsStore
+	port  string
 }
 
 type StatusResponse struct {
-	Status        string                      `json:"status"`
-	Timestamp     time.Time                   `json:"timestamp"`
-	TotalActions  int                         `json:"total_actions"`
-	RecentActions []diagnostics.HealingAction `json:"recent_actions"`
-	SystemHealth  string                      `json:"system_health"`
+	Status        string                       `json:"status"`
+	Timestamp     time.Time                    `json:"timestamp"`
+	TotalActions  int                          `json:"total_actions"`
+	RecentActions []any                        `json:"recent_actions"`
+	SystemHealth  string                       `json:"system_health"`
 }
 
-func NewAPIServer(autoHealer *diagnostics.AutoHealer, diagEngine *diagnostics.DiagnosticsEngine, port string) *APIServer {
+
+func NewAPIServer(opsStore *store.OpsStore, port string) *APIServer {
 	return &APIServer{
-		autoHealer: autoHealer,
-		diagEngine: diagEngine,
-		port:       port,
+		store: opsStore,
+		port:  port,
 	}
 }
 
 func (s *APIServer) Start() {
 	http.HandleFunc("/", s.handleRoot)
+	http.HandleFunc("/app.css", s.handleStatic)
+	http.HandleFunc("/app.js", s.handleStatic)
 	http.HandleFunc("/status", s.handleStatus)
 	http.HandleFunc("/actions", s.handleActions)
 	http.HandleFunc("/health", s.handleHealth)
 
+	http.HandleFunc("/api/v1/snapshot", s.handleSnapshotV1)
+	http.HandleFunc("/api/v1/timeline", s.handleTimelineV1)
+	http.HandleFunc("/api/v1/stream", s.handleStreamV1)
+
 	fmt.Printf("🌐 API Server starting on port %s\n", s.port)
-	fmt.Printf("📊 Access at: http://localhost:%s/status\n", s.port)
+	fmt.Printf("📊 Access at: http://localhost:%s\n", s.port)
 
 	go func() {
 		if err := http.ListenAndServe(":"+s.port, nil); err != nil {
@@ -48,66 +61,66 @@ func (s *APIServer) Start() {
 }
 
 func (s *APIServer) handleRoot(w http.ResponseWriter, r *http.Request) {
-	html := `<!DOCTYPE html>
-<html>
-<head>
-    <title>K8s AI Healer Dashboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { background: #2196F3; color: white; padding: 20px; border-radius: 8px; text-align: center; }
-        .card { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .nav { margin: 20px 0; }
-        .nav a { margin-right: 20px; padding: 10px 20px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>K8s AI Healer Dashboard</h1>
-            <p>Advanced Kubernetes Infrastructure Healing System</p>
-        </div>
-        <div class="nav">
-            <a href="/status">System Status</a>
-            <a href="/actions">Healing Actions</a>
-            <a href="/health">Health Check</a>
-        </div>
-        <div class="card">
-            <h2>System Overview</h2>
-            <p>The K8s AI Healer detects and fixes infrastructure issues that Kubernetes might miss:</p>
-            <ul>
-                <li>Stuck Container Detection</li>
-                <li>Network Connectivity Issues</li>
-                <li>Disk Space Management</li>
-                <li>Restart Pattern Analysis</li>
-                <li>Automatic Healing</li>
-            </ul>
-        </div>
-    </div>
-</body>
-</html>`
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/") {
+		http.NotFound(w, r)
+		return
+	}
+	b, err := webFS.ReadFile("web/index.html")
+	if err != nil {
+		http.Error(w, "UI load error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(b)
+}
 
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(html))
+func (s *APIServer) handleStatic(w http.ResponseWriter, r *http.Request) {
+	name := strings.TrimPrefix(r.URL.Path, "/")
+	name = path.Clean(name)
+	if name != "app.css" && name != "app.js" {
+		http.NotFound(w, r)
+		return
+	}
+
+	b, err := webFS.ReadFile("web/" + name)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if strings.HasSuffix(name, ".css") {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	} else if strings.HasSuffix(name, ".js") {
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	}
+	w.Write(b)
 }
 
 func (s *APIServer) handleStatus(w http.ResponseWriter, r *http.Request) {
-	history := s.autoHealer.GetHealingHistory()
+	snap := s.store.GetSnapshot()
+	history := snap.HealingActions
 
-	var recentActions []diagnostics.HealingAction
+	var recentActions []any
 	if len(history) > 0 {
 		start := 0
 		if len(history) > 10 {
 			start = len(history) - 10
 		}
-		recentActions = history[start:]
+		for _, a := range history[start:] {
+			recentActions = append(recentActions, a)
+		}
 	}
 
 	systemHealth := "HEALTHY"
 	if len(recentActions) > 0 {
 		criticalCount := 0
 		for _, action := range recentActions {
-			if action.ActionType == "RESTART_POD_NETWORK" || action.Status == "FAILED" {
+			b, _ := json.Marshal(action)
+			if strings.Contains(string(b), "RESTART_POD_NETWORK") || strings.Contains(string(b), "\"Status\":\"FAILED\"") {
 				criticalCount++
 			}
 		}
@@ -133,7 +146,8 @@ func (s *APIServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *APIServer) handleActions(w http.ResponseWriter, r *http.Request) {
-	history := s.autoHealer.GetHealingHistory()
+	snap := s.store.GetSnapshot()
+	history := snap.HealingActions
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -152,6 +166,74 @@ func (s *APIServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"status":    "UP",
 		"timestamp": time.Now(),
 		"service":   "k8s-ai-healer",
-		"version":   "3.0",
+		"version":   "4.0",
 	})
+}
+
+func (s *APIServer) handleSnapshotV1(w http.ResponseWriter, r *http.Request) {
+	snap := s.store.GetSnapshot()
+	writeJSON(w, snap)
+}
+
+func (s *APIServer) handleTimelineV1(w http.ResponseWriter, r *http.Request) {
+	limit := 500
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+
+	items := s.store.GetTimeline(limit)
+	writeJSON(w, map[string]any{"items": items})
+}
+
+func (s *APIServer) handleStreamV1(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	recv, cancel := s.store.Subscribe()
+	defer cancel()
+
+	io.WriteString(w, "retry: 2000\n")
+	io.WriteString(w, "event: ready\n")
+	io.WriteString(w, "data: {}\n\n")
+	flusher.Flush()
+
+	ping := time.NewTicker(5 * time.Second)
+	defer ping.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ping.C:
+			io.WriteString(w, "event: ping\n")
+			io.WriteString(w, "data: {}\n\n")
+			flusher.Flush()
+		case msg, ok := <-recv:
+			if !ok {
+				return
+			}
+			io.WriteString(w, "event: update\n")
+			io.WriteString(w, "data: ")
+			w.Write(msg)
+			io.WriteString(w, "\n\n")
+			flusher.Flush()
+		}
+	}
+}
+
+func writeJSON(w http.ResponseWriter, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(payload)
 }

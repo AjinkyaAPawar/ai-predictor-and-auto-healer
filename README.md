@@ -469,3 +469,123 @@ MIT License — see [LICENSE](LICENSE) for details.
 ---
 
 Made with ❤️ for the Kubernetes community
+
+---
+
+## Development Workflow — Code Changes to Running Pod
+
+When you edit the Go code and want to see your changes running in Kubernetes:
+
+### Quick Iteration (recommended)
+
+```bash
+# Edit code in internal/ or cmd/
+vim internal/diagnostics/auto_healer.go
+
+# Rebuild + reload + force restart (picks up new code)
+make redeploy
+# or: ./scripts/redeploy.sh
+
+# Watch logs
+make logs
+```
+
+### What `make redeploy` does:
+
+1. Rebuilds the Docker image with your code changes (offline, using `vendor/`)
+2. Loads the new image into your cluster (`minikube image load` / `kind load docker-image`)
+3. **Forces a pod restart** so Kubernetes picks up the new image immediately
+
+### Why the force restart?
+
+The image is tagged `:latest` and `imagePullPolicy: Never` is set. Kubernetes caches images by their SHA digest, not by the tag name. After rebuilding with the same tag, the pod still references the old digest until you explicitly restart it.
+
+### Alternative — Manual steps
+
+```bash
+# 1. Rebuild and load
+make docker-build
+minikube image load k8s-healer:latest    # or: kind load docker-image ...
+
+# 2. Force restart
+kubectl rollout restart deployment/k8s-healer -n healer-system
+
+# 3. Wait and watch
+kubectl rollout status deployment/k8s-healer -n healer-system
+kubectl logs -f deployment/k8s-healer -n healer-system
+```
+
+### Using versioned tags (for staging/production)
+
+```bash
+# Tag your build
+IMAGE_TAG=v1.2.3 make docker-build
+
+# Load it
+minikube image load k8s-healer:v1.2.3
+
+# Update deployments/deployment.yaml:
+#   image: k8s-healer:v1.2.3
+#   imagePullPolicy: Never
+
+kubectl apply -f deployments/deployment.yaml
+```
+
+With versioned tags, Kubernetes sees a different image reference and automatically triggers a rolling update.
+
+---
+
+## 🎯 Hackathon Demo / Showcase
+
+Want to demo this at a hackathon or showcase? We've got you covered with demo apps and a complete presentation guide.
+
+### Quick Demo Setup
+
+```bash
+# 1. Deploy the healer
+make deploy
+
+# 2. Run the demo starter (creates problem apps)
+./demo/start-demo.sh
+
+# 3. Open the dashboard (in another terminal)
+kubectl port-forward svc/k8s-healer 8080:8080 -n healer-system
+
+# 4. Open http://localhost:8080 in FULL SCREEN mode
+
+# Watch the magic happen! The AI will detect and fix issues in real-time.
+```
+
+### What the Demo Shows
+
+The demo deploys 5 applications with intentional problems:
+
+| App | Problem | AI Detection | Healing Action |
+|---|---|---|---|
+| `crash-loop` | Exits every 30s | Restart pattern analysis | Root cause identification |
+| `memory-leak` | Gradual memory growth | Memory leak prediction (18h forecast) | Proactive restart |
+| `disk-filler` | Fills /tmp with files | Disk space monitoring | Auto-cleanup of old files |
+| `cpu-hog` | High CPU load | CPU trend analysis | Auto-scale deployment |
+| `network-test` | DNS checks | Network diagnostics | DNS/network fixes |
+
+### Demo Resources
+
+- **`demo/DEMO_GUIDE.md`** — Complete presentation walkthrough (15 min)
+- **`demo/PRESENTATION_SLIDES.md`** — Slide deck outline with talking points
+- **`demo/demo-app.yaml`** — Problem apps for live demo
+- **`demo/start-demo.sh`** — One-command demo setup
+- **`demo/cleanup-demo.sh`** — Remove demo apps after
+
+### Presentation Tips
+
+1. **Open dashboard full-screen** — the gradient UI looks stunning on projectors
+2. **Split screen** — dashboard + terminal logs side-by-side
+3. **Let it run** — healing actions appear within 1-3 minutes
+4. **Highlight the stats** — "Look, 5 actions taken in 2 minutes, zero human intervention"
+5. **Show the terminal** — live logs prove it's real, not pre-recorded
+
+### Elevator Pitch (30 seconds)
+
+> "Kubernetes health checks only detect dead containers. We detect invisible problems: stuck processes, DNS failures, memory leaks, and disk issues. Our AI predicts failures 24-72 hours ahead and heals them automatically. Everything runs locally with zero external dependencies. We've just shown 5 real healing actions in under 3 minutes — no human intervention needed."
+
+Read the full guides in `demo/` for the complete presentation flow!

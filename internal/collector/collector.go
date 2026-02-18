@@ -53,6 +53,25 @@ func (c *Collector) GetAllPodMetrics(ctx context.Context) ([]PodMetrics, error) 
         return nil, fmt.Errorf("failed to get pods: %v", err)
     }
 
+	// Preload nodes so we can compute pod usage % relative to node allocatable
+	nodes, err := c.clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		fmt.Printf("Warning: failed to list nodes (percent calc disabled): %v\n", err)
+		nodes = nil
+	}
+	nodeCPU := make(map[string]float64)
+	nodeMem := make(map[string]float64)
+	if nodes != nil {
+		for _, n := range nodes.Items {
+			if cpuQ, ok := n.Status.Allocatable["cpu"]; ok {
+				nodeCPU[n.Name] = float64(cpuQ.MilliValue())
+			}
+			if memQ, ok := n.Status.Allocatable["memory"]; ok {
+				nodeMem[n.Name] = float64(memQ.Value())
+			}
+		}
+	}
+
     // Get pod metrics from metrics API (NO kubectl dependency!)
     podMetricsAPI, err := c.metricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
     if err != nil {
@@ -60,21 +79,25 @@ func (c *Collector) GetAllPodMetrics(ctx context.Context) ([]PodMetrics, error) 
         // Continue without metrics - better than failing
     }
 
-    // Create metrics map for fast lookup
+    // Create metrics map for fast lookup (sum across containers)
     metricsMap := make(map[string]map[string]resource.Quantity)
     if podMetricsAPI != nil {
         for _, podMetric := range podMetricsAPI.Items {
             key := fmt.Sprintf("%s/%s", podMetric.Namespace, podMetric.Name)
             containerMetrics := make(map[string]resource.Quantity)
+            cpuTotal := resource.MustParse("0")
+            memTotal := resource.MustParse("0")
             
             for _, container := range podMetric.Containers {
                 if cpu, exists := container.Usage["cpu"]; exists {
-                    containerMetrics["cpu"] = cpu
+					cpuTotal.Add(cpu)
                 }
                 if memory, exists := container.Usage["memory"]; exists {
-                    containerMetrics["memory"] = memory
+					memTotal.Add(memory)
                 }
             }
+			containerMetrics["cpu"] = cpuTotal
+			containerMetrics["memory"] = memTotal
             metricsMap[key] = containerMetrics
         }
     }
@@ -89,8 +112,32 @@ func (c *Collector) GetAllPodMetrics(ctx context.Context) ([]PodMetrics, error) 
         }
 
         var restarts int32
+        totalContainers := 0
+        readyContainers := 0
+        anyRunning := false
         for _, cs := range pod.Status.ContainerStatuses {
             restarts += cs.RestartCount
+            totalContainers++
+            if cs.Ready {
+                readyContainers++
+            }
+            if cs.State.Running != nil {
+                anyRunning = true
+            }
+        }
+
+        status := string(pod.Status.Phase)
+        if pod.DeletionTimestamp != nil {
+            status = "Terminating"
+        } else if anyRunning {
+            status = "Running"
+            if totalContainers > 0 {
+                status = fmt.Sprintf("Running (%d/%d Ready)", readyContainers, totalContainers)
+            }
+        } else if status == "Pending" {
+            if pod.Status.Reason != "" {
+                status = fmt.Sprintf("Pending (%s)", pod.Status.Reason)
+            }
         }
 
         age := time.Since(pod.CreationTimestamp.Time)
@@ -99,29 +146,31 @@ func (c *Collector) GetAllPodMetrics(ctx context.Context) ([]PodMetrics, error) 
         podMetric := PodMetrics{
             Name:      pod.Name,
             Namespace: pod.Namespace,
-            Status:    string(pod.Status.Phase),
+            Status:    status,
             Restarts:  restarts,
             Age:       age,
             NodeName:  pod.Spec.NodeName,
-            CPUUsage:  "0m",
-            MemUsage:  "0Mi",
-            CPUPercent: 0.0,
-            MemPercent: 0.0,
+            CPUUsage:  "n/a",
+            MemUsage:  "n/a",
+            CPUPercent: -1,
+            MemPercent: -1,
         }
 
         // Get actual metrics if available
         if containerMetrics, exists := metricsMap[podKey]; exists {
             if cpu, hasCPU := containerMetrics["cpu"]; hasCPU {
                 podMetric.CPUUsage = cpu.String()
-                // Convert to percentage (simplified)
                 cpuMilli := float64(cpu.MilliValue())
-                podMetric.CPUPercent = cpuMilli / 10.0 // Rough percentage
+                if nodeTotal, ok := nodeCPU[pod.Spec.NodeName]; ok && nodeTotal > 0 {
+                    podMetric.CPUPercent = (cpuMilli / nodeTotal) * 100
+                }
             }
             if memory, hasMem := containerMetrics["memory"]; hasMem {
                 podMetric.MemUsage = memory.String()
-                // Convert to percentage (simplified - assumes 1Gi limit)
                 memBytes := float64(memory.Value())
-                podMetric.MemPercent = (memBytes / (1024 * 1024 * 1024)) * 100
+                if nodeTotal, ok := nodeMem[pod.Spec.NodeName]; ok && nodeTotal > 0 {
+                    podMetric.MemPercent = (memBytes / nodeTotal) * 100
+                }
             }
         }
 

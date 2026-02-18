@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"k8s-healer/internal/actions"
@@ -15,6 +16,7 @@ import (
 	"k8s-healer/internal/collector"
 	"k8s-healer/internal/diagnostics"
 	"k8s-healer/internal/predictor"
+	"k8s-healer/internal/store"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -85,9 +87,10 @@ func main() {
 	actionEngine := actions.New(clientset, cfg.dryRun)
 	diagEngine := diagnostics.New(clientset, restConfig)
 	autoHealer := diagnostics.NewAutoHealer(diagEngine, cfg.dryRun)
+	opsStore := store.New(2000)
 
 	// Start HTTP API Server
-	apiServer := api.NewAPIServer(autoHealer, diagEngine, cfg.port)
+	apiServer := api.NewAPIServer(opsStore, cfg.port)
 	apiServer.Start()
 
 	fmt.Println("🚀 AI Monitoring started - COMPLETE SYSTEM ACTIVE")
@@ -102,6 +105,7 @@ func main() {
 
 	for i := 1; ; i++ {
 		ctx := context.TODO()
+		cycleTs := time.Now()
 
 		// Standard metrics collection
 		metrics, err := col.GetAllPodMetrics(ctx)
@@ -109,6 +113,38 @@ func main() {
 			fmt.Printf("Error getting metrics: %v\n", err)
 			time.Sleep(cfg.checkInterval)
 			continue
+		}
+
+		// Emit observation events for obvious runtime states so the timeline always shows activity
+		// (e.g. CrashLoopBackOff, Error, restart spikes) even if AI predictions are empty.
+		correlationID := fmt.Sprintf("cycle-%d", i)
+		for _, m := range metrics {
+			if m.Status != "" && !strings.HasPrefix(m.Status, "Running") {
+				opsStore.AppendTimeline(store.TimelineEvent{
+					ID:            fmt.Sprintf("%s-obs-status-%s-%s", correlationID, m.Namespace, m.Name),
+					Type:          "observation",
+					Severity:      "warning",
+					Title:         fmt.Sprintf("Pod status: %s", m.Status),
+					Body:          fmt.Sprintf("Observed non-running status for %s/%s", m.Namespace, m.Name),
+					Namespace:     m.Namespace,
+					PodName:       m.Name,
+					Timestamp:     cycleTs,
+					CorrelationID: correlationID,
+				})
+			}
+			if m.Restarts >= 3 {
+				opsStore.AppendTimeline(store.TimelineEvent{
+					ID:            fmt.Sprintf("%s-obs-restarts-%s-%s", correlationID, m.Namespace, m.Name),
+					Type:          "observation",
+					Severity:      "warning",
+					Title:         fmt.Sprintf("Restart spike: %d restarts", m.Restarts),
+					Body:          fmt.Sprintf("Observed restarts=%d for %s/%s", m.Restarts, m.Namespace, m.Name),
+					Namespace:     m.Namespace,
+					PodName:       m.Name,
+					Timestamp:     cycleTs,
+					CorrelationID: correlationID,
+				})
+			}
 		}
 
 		// Advanced diagnostics
@@ -131,6 +167,151 @@ func main() {
 		var healingActions []diagnostics.HealingAction
 		if len(containerChecks) > 0 {
 			healingActions = autoHealer.HealContainerIssues(ctx, containerChecks)
+		}
+
+		// Standard predictions and actions
+		pred.UpdateHistory(metrics)
+		predictions := pred.PredictIssues(metrics)
+
+		// Build a unified action list for UI (auto-healer actions + predictor planned actions)
+		plannedActions := make([]diagnostics.HealingAction, 0, len(predictions))
+		for _, p := range predictions {
+			desc := "AI planned action from predictor"
+			if p.Reason != "" {
+				desc = fmt.Sprintf("AI planned action from predictor (reason=%s)", p.Reason)
+			}
+			plannedActions = append(plannedActions, diagnostics.HealingAction{
+				ActionType:    p.Action,
+				PodName:       p.PodName,
+				Namespace:     p.PodNamespace,
+				ContainerName: "",
+				Description:   desc,
+				Status:        "PLANNED",
+				Timestamp:     cycleTs,
+				Result:        "",
+			})
+		}
+
+		// Publish snapshot for API/UI
+		opsStore.UpdateSnapshot(store.Snapshot{
+			Timestamp:       cycleTs,
+			PodMetrics:      metrics,
+			StuckContainers: stuckContainers,
+			ContainerChecks: containerChecks,
+			RestartPatterns: restartPatterns,
+			Predictions:     predictions,
+			HealingActions:  append(append([]diagnostics.HealingAction(nil), healingActions...), plannedActions...),
+			DryRun:          cfg.dryRun,
+		})
+
+		// Append explainability timeline events (high-signal only)
+
+		// Diagnostic explainability: why remediation candidates were selected (DNS/disk/tmp/network)
+		for _, cr := range containerChecks {
+			sev := "info"
+			if strings.ToUpper(cr.OverallStatus) == "CRITICAL" {
+				sev = "critical"
+			} else if strings.ToUpper(cr.OverallStatus) == "WARNING" {
+				sev = "warning"
+			}
+
+			parts := make([]string, 0, len(cr.Checks))
+			for _, chk := range cr.Checks {
+				if strings.ToUpper(chk.Status) == "OK" {
+					continue
+				}
+				fix := ""
+				if len(chk.FixActions) > 0 {
+					fix = fmt.Sprintf(" fix=%s", strings.Join(chk.FixActions, ","))
+				}
+				parts = append(parts, fmt.Sprintf("%s status=%s%s details=%s", chk.CheckName, chk.Status, fix, chk.Details))
+			}
+
+			if len(parts) > 0 {
+				opsStore.AppendTimeline(store.TimelineEvent{
+					ID:            fmt.Sprintf("%s-check-%s-%s", correlationID, cr.Namespace, cr.PodName),
+					Type:          "diagnostic",
+					Severity:      sev,
+					Title:         fmt.Sprintf("Diagnostics: %s/%s (%s)", cr.Namespace, cr.PodName, cr.ContainerName),
+					Body:          strings.Join(parts, " | "),
+					Namespace:     cr.Namespace,
+					PodName:       cr.PodName,
+					ContainerName: cr.ContainerName,
+					Timestamp:     cycleTs,
+					CorrelationID: correlationID,
+				})
+			}
+		}
+
+		if len(predictions) > 0 {
+			opsStore.AppendTimeline(store.TimelineEvent{
+				ID:            fmt.Sprintf("%s-pred", correlationID),
+				Type:          "prediction",
+				Severity:      "warning",
+				Title:         fmt.Sprintf("%d risk predictions generated", len(predictions)),
+				Body:          "Predictor raised risks for one or more workloads.",
+				Timestamp:     cycleTs,
+				CorrelationID: correlationID,
+			})
+
+			// Emit per-workload prediction events so the timeline is drilldown-capable
+			for _, p := range predictions {
+				sev := "info"
+				risk := strings.ToUpper(p.Risk)
+				if risk == "CRITICAL" {
+					sev = "critical"
+				} else if risk == "HIGH" || risk == "MEDIUM" || risk == "LOW-MEDIUM" {
+					sev = "warning"
+				}
+
+				body := ""
+				if p.Reason != "" {
+					body = fmt.Sprintf("reason=%s", p.Reason)
+				}
+				if len(p.Issues) > 0 {
+					if body != "" {
+						body += " | "
+					}
+					body += strings.Join(p.Issues, " | ")
+				}
+
+				opsStore.AppendTimeline(store.TimelineEvent{
+					ID:            fmt.Sprintf("%s-pred-%s-%s", correlationID, p.PodNamespace, p.PodName),
+					Type:          "prediction",
+					Severity:      sev,
+					Title:         fmt.Sprintf("%s → %s (ttf=%s)", p.Risk, p.Action, p.TimeToFailure),
+					Body:          body,
+					Namespace:     p.PodNamespace,
+					PodName:       p.PodName,
+					Timestamp:     cycleTs,
+					CorrelationID: correlationID,
+				})
+			}
+		}
+		for _, a := range healingActions {
+			sev := "info"
+			if a.Status == "FAILED" {
+				sev = "critical"
+			}
+			body := a.Description
+			if a.Status != "" {
+				body = fmt.Sprintf("status=%s | %s", a.Status, body)
+			}
+			if a.Result != "" {
+				body = fmt.Sprintf("%s | result=%s", body, a.Result)
+			}
+			opsStore.AppendTimeline(store.TimelineEvent{
+				ID:            fmt.Sprintf("%s-action-%s-%s", correlationID, a.Namespace, a.PodName),
+				Type:          "action",
+				Severity:      sev,
+				Title:         a.ActionType,
+				Body:          body,
+				Namespace:     a.Namespace,
+				PodName:       a.PodName,
+				ContainerName: a.ContainerName,
+				Timestamp:     a.Timestamp,
+				CorrelationID: correlationID,
+			})
 		}
 
 		hasIssues := false
@@ -166,10 +347,6 @@ func main() {
 			fmt.Printf("[%s] 🟢 OK (%d checks until next full report) - Dashboard: http://localhost:%s\n",
 				time.Now().Format("15:04:05"), checksUntilNext, cfg.port)
 		}
-
-		// Standard predictions and actions
-		pred.UpdateHistory(metrics)
-		predictions := pred.PredictIssues(metrics)
 
 		if len(predictions) > 0 {
 			pred.PrintPredictions(predictions)

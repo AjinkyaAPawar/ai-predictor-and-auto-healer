@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: problem-app
+  namespace: default
+  labels:
+    app: problem-app
+    demo: k8s-healer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: problem-app
+  template:
+    metadata:
+      labels:
+        app: problem-app
+        demo: k8s-healer
+    spec:
+      containers:
+      - name: app
+        image: problem-app:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PROBLEM_MODE
+          value: "all"
+        - name: PORT
+          value: "8080"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"  # Intentionally low to trigger OOM faster
+            cpu: "200m"
+        # Note: No health checks so the container stays "healthy" even when broken
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: problem-app
+  namespace: default
+spec:
+  selector:
+    app: problem-app
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP

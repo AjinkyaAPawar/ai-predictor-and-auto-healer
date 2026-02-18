@@ -168,6 +168,17 @@ deploy: load-image
 	@echo "   Dashboard: kubectl port-forward svc/k8s-healer 8080:8080 -n $(NAMESPACE)"
 	@echo "              → http://localhost:8080"
 
+## redeploy: Rebuild image + force restart (fast iteration: code change → running pod)
+redeploy: load-image
+	@echo ""
+	@echo "♻️  Force-restarting deployment to pick up new image..."
+	kubectl rollout restart deployment/k8s-healer -n $(NAMESPACE)
+	@echo "⏳ Waiting for rollout to complete (timeout: 120s)..."
+	kubectl rollout status deployment/k8s-healer -n $(NAMESPACE) --timeout=120s
+	@echo ""
+	@echo "✅ Redeployed! New image is now running."
+	@echo "   Logs: kubectl logs -f deployment/k8s-healer -n $(NAMESPACE)"
+
 ## undeploy: Remove all Kubernetes resources
 undeploy: check-cluster
 	@echo "▶ Removing all Kubernetes resources..."

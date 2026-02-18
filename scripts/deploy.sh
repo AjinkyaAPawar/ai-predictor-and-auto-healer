@@ -93,3 +93,11 @@ echo "   Pods:      kubectl get pods -n ${NAMESPACE}"
 echo "   Logs:      kubectl logs -f deployment/k8s-healer -n ${NAMESPACE}"
 echo "   Dashboard: kubectl port-forward svc/k8s-healer 8080:8080 -n ${NAMESPACE}"
 echo "              → http://localhost:8080"
+
+# ── Optional: Force pod restart ───────────────────────────────────────────────
+# Kubernetes caches images by digest, not by tag. Since we're using :latest,
+# you might want to force a restart to pick up the newly built image:
+#
+# Uncomment the following line to auto-restart after deploy:
+# kubectl rollout restart deployment/k8s-healer -n "${NAMESPACE}"
+# kubectl rollout status deployment/k8s-healer -n "${NAMESPACE}" --timeout=120s
