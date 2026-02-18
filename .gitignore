@@ -3,10 +3,10 @@ bin/
 *.exe
 *.out
 
-# Generated/temporary deployment files
+# Auto-generated production deployment (written by deploy-production.sh)
 deployments/deployment-production.yaml
 
-# Large files / local tools
+# Local cluster tools (not part of the project)
 minikube-*
 kubectl
 kind
@@ -23,3 +23,9 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+/vendor
+
+# NOTE: vendor/ is intentionally NOT ignored.
+# Committing vendor/ makes the project fully self-contained and buildable
+# in air-gapped / offline environments without any internet access.

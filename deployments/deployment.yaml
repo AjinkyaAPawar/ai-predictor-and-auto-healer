@@ -1,3 +1,11 @@
+# K8s AI Healer — Deployment + Service
+# ─────────────────────────────────────────────────────────────────────────────
+# Uses the locally built image. Build it first:
+#   docker build -t k8s-healer:latest .
+#
+# For minikube: minikube image load k8s-healer:latest
+# For kind:     kind load docker-image k8s-healer:latest
+# ─────────────────────────────────────────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,12 +27,13 @@ spec:
         app.kubernetes.io/name: k8s-ai-healer
     spec:
       serviceAccountName: k8s-healer
-      # Ensures the pod is scheduled and won't be evicted due to resource pressure
-      priorityClassName: system-cluster-critical
       containers:
       - name: healer
+        # Built locally: docker build -t k8s-healer:latest .
+        # Change to your internal registry if needed.
         image: k8s-healer:latest
-        imagePullPolicy: IfNotPresent
+        # Never = only use locally present image, never pull from external registry
+        imagePullPolicy: Never
         ports:
         - name: http
           containerPort: 8080
@@ -71,7 +80,6 @@ spec:
           timeoutSeconds: 5
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
           runAsNonRoot: false
       restartPolicy: Always
       terminationGracePeriodSeconds: 30

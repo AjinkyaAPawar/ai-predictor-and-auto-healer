@@ -1,11 +1,21 @@
-# K8s AI Healer - All-in-One Installation Manifest
-# Apply with: kubectl apply -f install.yaml
+# K8s AI Healer — All-in-One Local Installation Manifest
+# ─────────────────────────────────────────────────────────────────────────────
+# PRE-REQUISITE: Build the image locally first:
 #
-# This installs:
-#   1. healer-system Namespace
-#   2. ServiceAccount, ClusterRole, ClusterRoleBinding (RBAC)
-#   3. Deployment
-#   4. Service
+#   docker build -t k8s-healer:latest .
+#
+# For minikube — load the image so the cluster can see it:
+#   minikube image load k8s-healer:latest
+#
+# For kind:
+#   kind load docker-image k8s-healer:latest
+#
+# For other clusters — push to your internal registry and update the
+# `image:` field below to match (e.g. registry.local/k8s-healer:latest).
+#
+# Apply with:
+#   kubectl apply -f deployments/install.yaml
+# ─────────────────────────────────────────────────────────────────────────────
 ---
 apiVersion: v1
 kind: Namespace
@@ -93,8 +103,14 @@ spec:
       serviceAccountName: k8s-healer
       containers:
       - name: healer
-        image: pavel09/k8s-ai-healer:latest
-        imagePullPolicy: Always
+        # ── LOCAL IMAGE ────────────────────────────────────────────────────
+        # Built from this repo with: docker build -t k8s-healer:latest .
+        # Change to your internal registry if needed:
+        #   image: registry.yourcompany.com/k8s-healer:latest
+        image: k8s-healer:latest
+        # Never = only use locally present image (no external pull)
+        imagePullPolicy: Never
+        # ──────────────────────────────────────────────────────────────────
         ports:
         - name: http
           containerPort: 8080
@@ -141,6 +157,7 @@ spec:
           timeoutSeconds: 5
         securityContext:
           allowPrivilegeEscalation: false
+          runAsNonRoot: false
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
 ---

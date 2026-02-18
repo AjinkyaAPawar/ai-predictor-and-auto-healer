@@ -1,28 +1,21 @@
 # K8s AI Infrastructure Healer
 
-Advanced AI-powered Kubernetes infrastructure monitoring and auto-healing system that detects and fixes issues Kubernetes doesn't see.
+Advanced AI-powered Kubernetes monitoring and auto-healing system — **100% self-contained, zero external dependencies**.
 
-## Overview
+> Built and deployed entirely from local source. No external registry, no remote manifests, no internet required after initial vendor setup.
 
-K8s AI Infrastructure Healer is a comprehensive monitoring and auto-healing solution that goes beyond standard Kubernetes health checks. It uses AI algorithms to predict failures 24-72 hours in advance and automatically remediates infrastructure issues before they impact your applications.
+---
 
-### Key Features
+## How Self-Containment Works
 
-- **Predictive Intelligence**: Forecasts resource exhaustion and failures up to 72 hours ahead
-- **Auto-Healing**: Automatically fixes network issues, disk space problems, and stuck containers
-- **Advanced Diagnostics**: Detects problems that Kubernetes health checks miss
-- **Memory Leak Detection**: Identifies and predicts memory leaks with time-to-failure estimates
-- **Web Dashboard**: Real-time monitoring with REST API at `http://localhost:8080`
-- **Zero External Dependencies**: Works with the standard Kubernetes API only
+| Step | What happens | Internet needed? |
+|---|---|---|
+| `make vendor` | Downloads Go deps into `vendor/` | ✅ Yes — once only |
+| `make docker-build` | Builds image using `vendor/`, no `go mod download` | ❌ No |
+| `make deploy` | Loads image into cluster, applies local manifests | ❌ No |
+| Kubernetes runs it | `imagePullPolicy: Never` — uses local image only | ❌ No |
 
-### What Problems Does It Solve?
-
-1. **Stuck Containers**: Detects containers that pass health checks but are unresponsive
-2. **Network Connectivity Issues**: Identifies and fixes internal cluster network problems
-3. **Disk Space Management**: Monitors and automatically cleans `/tmp` directories
-4. **Memory Leaks**: Predicts memory exhaustion before it happens
-5. **Performance Degradation**: Detects gradual performance decline over time
-6. **Restart Loops**: Analyzes restart patterns to prevent crash loops
+After the first `make vendor`, the project builds and deploys forever with zero network access.
 
 ---
 
@@ -30,33 +23,29 @@ K8s AI Infrastructure Healer is a comprehensive monitoring and auto-healing solu
 
 ```
 k8s-ai-healer/
-├── cmd/
-│   └── healer/
-│       └── main.go              # Entry point — reads env vars, wires all components
+├── cmd/healer/main.go              # Entry point — reads env vars, wires components
 ├── internal/
-│   ├── actions/
-│   │   └── actions.go           # Healing actions: pod restart, deployment scale
-│   ├── api/
-│   │   └── api.go               # HTTP REST API + web dashboard (port 8080)
-│   ├── collector/
-│   │   └── collector.go         # Pod and node metrics collection via K8s API
+│   ├── actions/actions.go          # Pod restart, deployment scale-up
+│   ├── api/api.go                  # HTTP REST API + web dashboard (port 8080)
+│   ├── collector/collector.go      # Pod & node metrics via K8s API
 │   ├── diagnostics/
-│   │   ├── auto_healer.go       # Auto-healing: cleanup, DNS fix, network fix
-│   │   ├── container_checks.go  # DNS, disk, /tmp, network container checks
-│   │   ├── diagnostics.go       # Stuck container detection via exec
-│   │   └── restart_analyzer.go  # Restart pattern and OOM analysis
-│   └── predictor/
-│       └── predictor.go         # AI predictions: trend analysis, memory leak detection
+│   │   ├── auto_healer.go          # Cleanup tmp/disk, fix DNS/network
+│   │   ├── container_checks.go     # DNS, disk, /tmp, network checks per container
+│   │   ├── diagnostics.go          # Stuck container detection via exec
+│   │   └── restart_analyzer.go     # Restart pattern & OOM analysis
+│   └── predictor/predictor.go      # Trend analysis, memory leak detection
 ├── deployments/
-│   ├── namespace.yaml           # healer-system Namespace
-│   ├── rbac.yaml                # ServiceAccount + ClusterRole + ClusterRoleBinding
-│   ├── deployment.yaml          # Deployment + Service (for local image builds)
-│   └── install.yaml             # All-in-one manifest (uses public Docker Hub image)
+│   ├── namespace.yaml              # healer-system Namespace
+│   ├── rbac.yaml                   # ServiceAccount + ClusterRole + Binding
+│   ├── deployment.yaml             # Deployment + Service (imagePullPolicy: Never)
+│   └── install.yaml                # All-in-one manifest (also local image)
 ├── scripts/
-│   ├── deploy.sh                # Build image + deploy to Kubernetes
-│   └── deploy-production.sh     # Production deployment with confirmation prompt
-├── Dockerfile                   # Multi-stage Docker build
-├── Makefile                     # Common build/run/deploy targets
+│   ├── setup-vendor.sh             # One-time: vendor all Go deps (needs internet)
+│   ├── deploy.sh                   # Build + load + deploy (fully offline)
+│   └── deploy-production.sh        # Production deploy with confirmation prompt
+├── vendor/                         # Vendored Go dependencies (commit this!)
+├── Dockerfile                      # Multi-stage: vendored build → scratch image
+├── Makefile                        # All workflows in one place
 ├── go.mod
 └── go.sum
 ```
@@ -65,122 +54,195 @@ k8s-ai-healer/
 
 ## Quick Start
 
-### Prerequisites
-
-- Kubernetes cluster (v1.20+)
-- `kubectl` configured and pointing to your cluster
-- **Metrics Server** installed in the cluster ([install guide](#installing-metrics-server))
-- Docker (for building the image)
-- Go 1.21+ (for local builds only)
-
-### Option 1: One-Command Install (using public image)
+### Step 1 — Vendor dependencies (one time, needs internet)
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/Pavel-P09/k8s-ai-healer/main/deployments/install.yaml
+make vendor
+# or: ./scripts/setup-vendor.sh
 ```
 
-Then verify:
+This downloads all Go module dependencies into `vendor/`. After this runs once, **everything else is offline**.
+
+### Step 2 — Build, load & deploy
 
 ```bash
-# Check pods are running
-kubectl get pods -n healer-system
-
-# View live logs
-kubectl logs -f deployment/k8s-healer -n healer-system
-
-# Open web dashboard
-kubectl port-forward svc/k8s-healer 8080:8080 -n healer-system
-# Then visit http://localhost:8080
-```
-
-### Option 2: Build from Source + Deploy
-
-```bash
-# Clone the repository
-git clone https://github.com/Pavel-P09/k8s-ai-healer.git
-cd k8s-ai-healer
-
-# Build image and deploy to Kubernetes
 make deploy
 ```
 
-### Option 3: Local Binary (for testing/development)
+This automatically:
+1. Builds the Docker image using `vendor/` (no `go mod download`)
+2. Detects your cluster type (minikube / kind / other)
+3. Loads the image directly into the cluster — no registry needed
+4. Applies all Kubernetes manifests
+
+### Step 3 — Open the dashboard
 
 ```bash
-# Build the binary
-make build         # produces bin/healer
-
-# Run locally (uses ~/.kube/config)
-make run
-
-# Run in dry-run mode (no real changes)
-make run-dry
-```
-
-### Option 4: Docker Run (local testing)
-
-```bash
-# Build the Docker image
-docker build -t k8s-healer:latest .
-
-# Run with your kubeconfig mounted
-docker run -v ~/.kube/config:/root/.kube/config k8s-healer:latest
+kubectl port-forward svc/k8s-healer 8080:8080 -n healer-system
+# Then open: http://localhost:8080
 ```
 
 ---
 
-## Kubernetes RBAC
+## Installation Options
 
-The healer requires the following permissions:
+### Option A — Full offline deploy (recommended)
 
-| Resource | Verbs | Reason |
-|---|---|---|
-| `pods` | get, list, watch, delete | Monitor and restart unhealthy pods |
-| `pods/exec` | create | Run diagnostic commands inside containers |
-| `pods/log` | get | Fetch logs for diagnostics |
-| `events` | get, list, watch | Analyze restart patterns |
-| `nodes` | get, list, watch | Node metrics collection |
-| `deployments` | get, list, watch, update, patch | Scale deployments for healing |
-| `metrics.k8s.io/pods,nodes` | get, list | CPU/memory metrics |
+```bash
+# One time only (internet required):
+make vendor
 
-All manifests in `deployments/rbac.yaml` handle this automatically.
+# All subsequent runs are 100% offline:
+make deploy
+```
+
+### Option B — Manual step-by-step
+
+```bash
+# 1. Vendor dependencies (once, with internet)
+go mod vendor
+
+# 2. Build the Docker image
+docker build -t k8s-healer:latest .
+
+# 3. Load into your cluster
+minikube image load k8s-healer:latest      # minikube
+# kind load docker-image k8s-healer:latest  # kind
+
+# 4. Apply manifests
+kubectl apply -f deployments/namespace.yaml
+kubectl apply -f deployments/rbac.yaml
+kubectl apply -f deployments/deployment.yaml
+
+# 5. Wait for it to come up
+kubectl wait --for=condition=available --timeout=90s \
+  deployment/k8s-healer -n healer-system
+```
+
+### Option C — Using the all-in-one manifest
+
+```bash
+# Build the image first (see above), then:
+kubectl apply -f deployments/install.yaml
+```
+
+### Option D — Run locally (no Kubernetes needed)
+
+```bash
+make build     # produces bin/healer
+make run       # uses ~/.kube/config
+make run-dry   # dry-run mode: logs what would happen, no real actions
+```
+
+---
+
+## Cluster Type Notes
+
+### minikube
+
+```bash
+make deploy
+# Automatically runs: minikube image load k8s-healer:latest
+```
+
+### kind
+
+```bash
+make deploy
+# Automatically runs: kind load docker-image k8s-healer:latest --name <cluster>
+```
+
+### Internal registry (production clusters)
+
+```bash
+# Build locally
+docker build -t k8s-healer:latest .
+
+# Tag for your internal registry
+docker tag k8s-healer:latest registry.yourcompany.com/k8s-healer:latest
+docker push registry.yourcompany.com/k8s-healer:latest
+
+# Update the image field in deployments/deployment.yaml:
+#   image: registry.yourcompany.com/k8s-healer:latest
+#   imagePullPolicy: IfNotPresent   (change from Never for registry use)
+
+kubectl apply -f deployments/namespace.yaml
+kubectl apply -f deployments/rbac.yaml
+kubectl apply -f deployments/deployment.yaml
+```
 
 ---
 
 ## Configuration
 
-All configuration is via **environment variables** — no config files needed.
+All settings via environment variables — no config files.
 
 | Variable | Default | Description |
 |---|---|---|
-| `HEALER_PORT` | `8080` | HTTP API server port |
-| `HEALER_DRY_RUN` | `false` | If `true`, log actions but don't execute them |
-| `HEALER_LOG_LEVEL` | `info` | Log verbosity (`info`, `debug`) |
-| `HEALER_CHECK_INTERVAL` | `30` | Seconds between health checks |
-| `KUBECONFIG` | `~/.kube/config` | Path to kubeconfig (local runs only) |
+| `HEALER_PORT` | `8080` | HTTP API / dashboard port |
+| `HEALER_DRY_RUN` | `false` | `true` = log actions but make no changes |
+| `HEALER_LOG_LEVEL` | `info` | Verbosity: `info` or `debug` |
+| `HEALER_CHECK_INTERVAL` | `30` | Seconds between health check cycles |
+| `KUBECONFIG` | `~/.kube/config` | Kubeconfig path (local runs only) |
 
-### Example: Enable Dry-Run Mode
+### Dry-Run Mode (safe testing)
 
 ```bash
-export HEALER_DRY_RUN=true
-export HEALER_CHECK_INTERVAL=60
-./bin/healer
+# Local
+HEALER_DRY_RUN=true ./bin/healer
+
+# Or edit deployments/deployment.yaml:
+# - name: HEALER_DRY_RUN
+#   value: "true"
 ```
 
-Or in Kubernetes, edit `deployments/deployment.yaml` and set the `HEALER_DRY_RUN` env var to `"true"`.
+---
+
+## What It Detects & Fixes
+
+### Detection
+
+| What | How |
+|---|---|
+| Stuck containers | `exec` into container, check `ps`/`uptime` — if exec fails or load is constant, container is stuck |
+| DNS failures | `nslookup kubernetes.default.svc.cluster.local` inside container |
+| Disk space | `df /` inside container — WARNING >80%, CRITICAL >90% |
+| `/tmp` full | `df /tmp` — WARNING >85%, CRITICAL >95% |
+| Network issues | `ping`/`wget` to cluster API and external from inside container |
+| Restart loops | Counts restarts, calculates frequency, reads exit codes (OOMKilled, SIGKILL) |
+| Memory leak | Linear regression over last 10 measurements — predicts time to OOM |
+| CPU growth | Same trend analysis — predicts time to saturation |
+
+### Auto-Healing Actions
+
+| Problem | Action taken |
+|---|---|
+| `/tmp` > 95% | Delete files older than 1 day, files > 10MB, `*.tmp`, `core.*` |
+| Disk > 90% | Truncate large log files, delete old temp files |
+| DNS fails | Restart the pod (DNS recovers via pod re-schedule) |
+| Network fails | Flush route cache; if still failing, restart pod |
+| CPU > 15% | Scale parent Deployment up by 1 replica |
+| Memory > 15% | Restart pod |
+| Memory leak predicted | Restart pod (urgency based on hours-to-failure) |
+
+### Safety Features
+
+- **Dry-run mode** — `HEALER_DRY_RUN=true` logs everything, changes nothing
+- **Max 3 actions per pod** — prevents infinite restart loops
+- **System pod exclusion** — never touches `kube-*` or `healer-*` namespaces
+- **Graceful restart** — uses Kubernetes Delete (Deployment controller recreates)
 
 ---
 
 ## API Reference
 
-The healer exposes a REST API on port 8080 (default).
+All endpoints on `http://localhost:8080` (after port-forwarding).
 
-### `GET /health` — Liveness/Readiness Check
+### `GET /health`
 
 ```bash
 curl http://localhost:8080/health
 ```
-
 ```json
 {
   "status": "UP",
@@ -190,131 +252,99 @@ curl http://localhost:8080/health
 }
 ```
 
-### `GET /status` — System Status
+### `GET /status`
 
 ```bash
 curl http://localhost:8080/status
 ```
-
 ```json
 {
   "status": "ACTIVE",
   "timestamp": "2024-01-01T12:00:00Z",
-  "total_actions": 42,
+  "total_actions": 12,
   "system_health": "HEALTHY",
   "recent_actions": [...]
 }
 ```
 
-### `GET /actions` — Healing Actions History
+### `GET /actions`
 
 ```bash
 curl http://localhost:8080/actions
 ```
-
 ```json
 {
-  "total_actions": 42,
+  "total_actions": 12,
   "actions": [
     {
-      "ActionType": "RESTART_POD_NETWORK",
-      "PodName": "web-app-abc123",
+      "ActionType": "CLEANUP_TMP",
+      "PodName": "my-app-abc123",
       "Namespace": "default",
       "ContainerName": "app",
       "Status": "COMPLETED",
       "Timestamp": "2024-01-01T12:00:00Z",
-      "Result": "Pod restarted successfully"
+      "Result": "Cleanup executed"
     }
   ]
 }
 ```
 
-### `GET /` — Web Dashboard
+### `GET /`
 
-Open `http://localhost:8080` in your browser for the interactive dashboard.
-
----
-
-## How It Works
-
-### Detection & Prediction Loop (every 30 seconds)
-
-1. **Metrics Collection** — Fetches CPU/memory for all pods and nodes via the Metrics Server API
-2. **Stuck Container Detection** — Runs `ps`, `uptime`, and `df` inside containers to detect unresponsive ones
-3. **Container Health Checks** — Checks DNS resolution, disk space, `/tmp` fullness, network connectivity
-4. **Restart Pattern Analysis** — Analyzes restart counts, frequencies, and exit codes (OOMKilled, SIGKILL, etc.)
-5. **Trend Analysis** — Linear regression over the last 10 measurements to detect growing resource usage
-6. **Failure Prediction** — Forecasts time-to-failure for memory leaks and CPU exhaustion (24-72h window)
-7. **Auto-Healing** — Executes safe remediation actions based on detected issues
-
-### Auto-Healing Actions
-
-| Trigger | Action |
-|---|---|
-| `/tmp` > 95% full | Delete files older than 1 day and files > 10MB |
-| Disk > 90% full | Truncate large log files, delete old temp files |
-| DNS fails | Restart the pod (DNS fix via pod restart) |
-| Network fails | Flush route cache; restart pod if still failing |
-| CPU > 15% | Scale up the parent Deployment by 1 replica |
-| Memory > 15% or memory leak | Restart the pod |
-| Stuck container (exec failing) | Flag for restart |
-
-### Safety Features
-
-- **Dry-run mode** — set `HEALER_DRY_RUN=true` to see what *would* happen without making changes
-- **Action limits** — max 3 actions per pod to prevent restart loops
-- **System pod exclusion** — never touches `kube-*` or `healer-*` namespaces
-- **Graceful restarts** — uses Kubernetes `Delete` (deployment controller recreates the pod)
+Web dashboard — open in browser after port-forwarding.
 
 ---
 
-## Installing Metrics Server
+## Kubernetes RBAC
 
-The healer gracefully degrades if Metrics Server is unavailable (metrics show as 0), but full predictive features require it.
+The healer runs as a dedicated ServiceAccount with the minimum required permissions:
 
-```bash
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-```
+| Resource | Verbs | Purpose |
+|---|---|---|
+| `pods` | get, list, watch, delete | Monitor and restart pods |
+| `pods/exec` | create | Run diagnostic commands inside containers |
+| `pods/log` | get | Fetch logs for diagnostics |
+| `events` | get, list, watch | Restart pattern analysis |
+| `nodes` | get, list, watch | Node metrics |
+| `deployments` | get, list, watch, update, patch | Scale-up healing |
+| `replicasets` | get, list, watch | Deployment controller support |
+| `metrics.k8s.io/pods,nodes` | get, list | CPU/memory data |
 
-For local clusters (minikube, kind) that use self-signed certs, add `--kubelet-insecure-tls`:
-
-```bash
-kubectl patch deployment metrics-server -n kube-system \
-  --type='json' \
-  -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
-```
-
-Verify Metrics Server is working:
-
-```bash
-kubectl top nodes
-kubectl top pods -A
-```
+All RBAC resources are in `deployments/rbac.yaml`.
 
 ---
 
-## Makefile Targets
+## Makefile Reference
 
 ```
-make build          Build the binary locally (bin/healer)
-make build-linux    Build a static Linux binary (for Docker cross-compilation)
-make run            Build and run locally using ~/.kube/config
-make run-dry        Run in dry-run mode (no real changes)
-make docker-build   Build the Docker image
-make docker-push    Push the Docker image to a registry
-make deploy         Build Docker image + apply all Kubernetes manifests
-make undeploy       Delete all Kubernetes resources
-make logs           Tail live logs from the deployed pod
-make status         Show Kubernetes deployment and pod status
-make fmt            Run go fmt
-make vet            Run go vet
-make test           Run go test
-make clean          Delete the built binary
+make vendor        Download all Go deps into vendor/ (once, needs internet)
+make build         Compile binary locally using vendor/ (offline)
+make build-linux   Compile static Linux binary (for Docker)
+make run           Build and run locally with ~/.kube/config
+make run-dry       Run in dry-run mode (no real changes)
+make docker-build  Build Docker image using vendor/ (offline)
+make load-image    Load image into minikube/kind cluster
+make deploy        Full pipeline: build + load + apply manifests
+make undeploy      Delete all Kubernetes resources
+make logs          Tail live pod logs
+make status        Show deployment, pod, and service status
+make fmt           Run go fmt
+make vet           Run go vet
+make test          Run go test
+make clean         Delete compiled binary
 ```
 
 ---
 
 ## Troubleshooting
+
+### `vendor/` directory missing
+
+```
+❌ Run 'make vendor' first
+```
+
+Run `make vendor` (requires internet — one time only).
 
 ### Metrics API not available
 
@@ -322,12 +352,59 @@ make clean          Delete the built binary
 Warning: Metrics API not available: the server could not find the requested resource
 ```
 
-Install the Metrics Server (see above). The healer continues to work without it — trend analysis and predictions will be disabled until metrics are available.
+The Metrics Server add-on is not installed in your cluster. The healer continues to work — trend analysis and predictions are disabled until metrics are available.
 
-### Permission denied / RBAC errors
+Install Metrics Server for your cluster type:
+
+**minikube:**
+```bash
+minikube addons enable metrics-server
+```
+
+**kind / other clusters:**
+```bash
+# Download the manifest locally, then apply from disk (no external URL at runtime):
+curl -Lo deployments/metrics-server.yaml \
+  https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# For kind (needs insecure TLS):
+kubectl patch -f deployments/metrics-server.yaml \
+  --local \
+  --type=json \
+  -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]' \
+  -o yaml > deployments/metrics-server-patched.yaml
+
+kubectl apply -f deployments/metrics-server-patched.yaml
+```
+
+Verify:
+```bash
+kubectl top nodes
+kubectl top pods -A
+```
+
+### Image not found — ErrImageNeverPull
+
+```
+Failed to pull image "k8s-healer:latest": rpc error: ... ErrImageNeverPull
+```
+
+The image isn't loaded into the cluster. Run:
 
 ```bash
-# Check if the service account has the required permissions
+# minikube
+minikube image load k8s-healer:latest
+
+# kind
+kind load docker-image k8s-healer:latest --name <your-cluster-name>
+```
+
+Or run `make deploy` which does this automatically.
+
+### RBAC / Permission denied
+
+```bash
+# Check if the service account has the right permissions
 kubectl auth can-i get pods \
   --as=system:serviceaccount:healer-system:k8s-healer -A
 
@@ -335,115 +412,59 @@ kubectl auth can-i create pods/exec \
   --as=system:serviceaccount:healer-system:k8s-healer -A
 ```
 
-If permissions are missing, re-apply the RBAC manifest:
-
+Re-apply if needed:
 ```bash
 kubectl apply -f deployments/rbac.yaml
 ```
 
-### Pod exec failures (container checks returning errors)
+### Container exec checks fail
 
-This is expected for minimal containers (distroless, scratch-based) that don't have `/bin/sh` or standard tools like `df`, `nslookup`, `ps`. The healer logs these as warnings and continues — it will not incorrectly flag these containers as stuck.
-
-### Dashboard not accessible
-
-```bash
-# Port-forward the service
-kubectl port-forward svc/k8s-healer 8080:8080 -n healer-system
-```
-
-Then open `http://localhost:8080`.
-
-### Check healer logs
-
-```bash
-kubectl logs -f deployment/k8s-healer -n healer-system
-```
+Expected behaviour for minimal/distroless containers (no `/bin/sh`, `df`, `nslookup`, etc.). The healer logs these as warnings and continues — it will not incorrectly flag these as stuck.
 
 ---
 
 ## Production Deployment
 
-For production, use the `deploy-production.sh` script which prompts for confirmation before applying:
-
 ```bash
+# Uses deploy-production.sh which:
+# 1. Asks for confirmation
+# 2. Builds image with vendor/
+# 3. Loads into cluster
+# 4. Deploys as k8s-healer-production with real healing actions
 ./scripts/deploy-production.sh
 ```
 
-Or use the Makefile with a custom image:
+Or with a custom image tag:
 
 ```bash
-IMAGE_NAME=myregistry.io/myorg/k8s-ai-healer IMAGE_TAG=v4.0 make deploy
+IMAGE_NAME=k8s-healer IMAGE_TAG=v4.0 ./scripts/deploy-production.sh
 ```
 
 ---
 
-## Monitoring Integration
-
-### Prometheus
-
-The healer exposes JSON endpoints that can be scraped or integrated with a Prometheus exporter. Add to your `prometheus.yml`:
-
-```yaml
-- job_name: 'k8s-healer'
-  static_configs:
-  - targets: ['k8s-healer.healer-system:8080']
-  metrics_path: '/status'
-```
-
-### Grafana
-
-Visualize:
-- Healing action frequency over time
-- Pod restart patterns
-- Resource usage trends
-- System health score
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Make your changes
-4. Run `make fmt && make vet && make test`
-5. Submit a pull request
-
-### Development Setup
+## Development Workflow
 
 ```bash
-git clone https://github.com/Pavel-P09/k8s-ai-healer.git
-cd k8s-ai-healer
+# One-time setup
+make vendor
 
-# Download Go dependencies
-go mod download
+# Edit code, then fast rebuild + redeploy:
+make docker-build
+minikube image load k8s-healer:latest   # or kind load ...
+kubectl rollout restart deployment/k8s-healer -n healer-system
 
-# Build
-make build
+# Watch logs
+make logs
 
-# Run tests
-make test
-
-# Run locally (requires a working kubeconfig)
+# Dry-run to test logic without side effects
 make run-dry
 ```
 
 ---
 
-## Roadmap
-
-- [ ] Support for custom healing actions via CRD
-- [ ] Prometheus `/metrics` endpoint
-- [ ] Integration with PagerDuty / Slack alerting
-- [ ] Multi-cluster support
-- [ ] Machine learning model improvements
-- [ ] Grafana dashboard templates
-
----
-
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
