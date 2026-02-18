@@ -232,3 +232,44 @@ body{
   .grid{grid-template-columns: repeat(2, minmax(160px, 1fr))}
   .sidebar{display:none}
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   REAL-TIME ACTIVITY ANIMATIONS (Hackathon Fix)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.dot.pulse {
+  animation: pulse-glow 1s ease-out;
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 0 0 var(--ok); transform: scale(1); }
+  50% { box-shadow: 0 0 0 8px transparent; transform: scale(1.2); }
+  100% { box-shadow: 0 0 0 0 transparent; transform: scale(1); }
+}
+
+.card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(122,226,255,.15);
+}
+
+/* Smooth number counter animations */
+.card-value {
+  transition: color 0.3s ease;
+}
+
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.empty > div:first-child {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
