@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"k8s-healer/internal/collector"
-	"k8s-healer/internal/diagnostics"
-	"k8s-healer/internal/predictor"
+	"ai-predictor-healer/internal/collector"
+	"ai-predictor-healer/internal/diagnostics"
+	"ai-predictor-healer/internal/predictor"
 )
 
 type TimelineEvent struct {

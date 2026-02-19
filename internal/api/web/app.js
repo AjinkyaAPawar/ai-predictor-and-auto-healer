@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// K8s AI Healer — Ultra-Robust Real-Time UI
+// AI Predictor & Auto-Healer — Ultra-Robust Real-Time UI
 // Fixes: Real-time updates, running pods counter, fallback polling, smooth animations
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -554,7 +554,7 @@ function init() {
     renderLive();
   }, 1000);
   
-  console.log('🚀 K8s AI Healer UI initialized');
+  console.log('🚀 AI Predictor & Auto-Healer UI initialized');
 }
 
 if (document.readyState === 'loading') {

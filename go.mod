@@ -1,4 +1,4 @@
-module k8s-healer
+module ai-predictor-healer
 
 go 1.21
 

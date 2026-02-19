@@ -1,9 +1,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# K8s AI Healer — Fully Offline Docker Build
+# AI Predictor & Auto-Healer — Fully Offline Docker Build
 #
 # HOW TO BUILD (no internet required after first vendor setup):
 #   1. Run once (with internet): go mod vendor
-#   2. Then build offline forever: docker build -t k8s-healer:latest .
+#   2. Then build offline forever: docker build -t ai-predictor-healer:latest .
 #
 # The final image is scratch-based (zero OS, zero shell, zero attack surface).
 # ─────────────────────────────────────────────────────────────────────────────
@@ -26,8 +26,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
       -mod=vendor \
       -ldflags="-s -w -extldflags=-static" \
-      -o /healer \
-      cmd/healer/main.go
+      -o /ai-healer \
+      cmd/ai-healer/main.go
 
 # ── Stage 2: Minimal runtime image ──────────────────────────────────────────
 # Using scratch = zero OS packages, zero shell, zero CVEs from base image
@@ -38,9 +38,9 @@ FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Copy the compiled binary
-COPY --from=builder /healer /healer
+COPY --from=builder /ai-healer /ai-healer
 
 # Expose the API/dashboard port
 EXPOSE 8080
 
-ENTRYPOINT ["/healer"]
+ENTRYPOINT ["/ai-healer"]

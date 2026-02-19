@@ -1,4 +1,4 @@
-# 🎪 K8s AI Healer — Hackathon Demo Kit
+# 🎪 AI Predictor & Auto-Healer — Hackathon Demo Kit
 
 Everything you need for a winning 10-minute presentation.
 
@@ -12,7 +12,7 @@ cd demo
 ```
 
 This script:
-1. ✅ Deploys the K8s AI Healer
+1. ✅ Deploys the AI Predictor & Auto-Healer
 2. ✅ Deploys a problematic demo app (memory leaks, disk issues, crashes)
 3. ✅ Starts a traffic generator to accelerate issues
 
@@ -70,7 +70,7 @@ kubectl run load-gen --image=busybox --restart=Never -- \
 ### 4. Open the Dashboard
 
 ```bash
-kubectl port-forward svc/k8s-healer 8080:8080 -n healer-system
+kubectl port-forward svc/ai-predictor-healer 8080:8080 -n ai-healer-system
 # Visit: http://localhost:8080
 ```
 
@@ -113,7 +113,7 @@ done
 
 ```bash
 # Show logs with predictions
-kubectl logs deployment/k8s-healer -n healer-system --tail=100
+kubectl logs deployment/ai-predictor-healer -n ai-healer-system --tail=100
 
 # Show actual Go code (if asked)
 cat ../internal/predictor/predictor.go | grep -A 20 "PredictIssues"
@@ -162,7 +162,7 @@ Emphasize these unique aspects:
 → The traffic generator might not be running. Check: `kubectl get pods load-gen`
 
 **Healer not detecting anything**
-→ Check healer logs: `kubectl logs deployment/k8s-healer -n healer-system -f`
+→ Check healer logs: `kubectl logs deployment/ai-predictor-healer -n ai-healer-system -f`
 
 **Cluster too slow**
 → Reduce memory limits on problem-app to trigger OOM faster:

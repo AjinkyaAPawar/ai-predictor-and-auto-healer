@@ -1,10 +1,10 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
-# K8s AI Healer — Complete Demo Setup Script
+# AI Predictor & Auto-Healer — Complete Demo Setup Script
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-echo "🏆 K8s AI Healer — Hackathon Demo Setup"
+echo "🏆 AI Predictor & Auto-Healer — Hackathon Demo Setup"
 echo "════════════════════════════════════════"
 echo ""
 
@@ -33,7 +33,7 @@ echo "🔍 Detected cluster type: ${CLUSTER_TYPE}"
 echo ""
 
 # ── Step 1: Deploy the Healer ────────────────────────────────────────────────
-echo "📦 Step 1/3: Building and deploying K8s AI Healer..."
+echo "📦 Step 1/3: Building and deploying AI Predictor & Auto-Healer..."
 cd ..
 
 if [ ! -d "vendor" ]; then
@@ -42,13 +42,13 @@ if [ ! -d "vendor" ]; then
 fi
 
 echo "   Building healer image..."
-docker build -t k8s-healer:latest . >/dev/null 2>&1
+docker build -t ai-predictor-healer:latest . >/dev/null 2>&1
 
 echo "   Loading into cluster..."
 if [ "${CLUSTER_TYPE}" = "minikube" ]; then
-  minikube image load k8s-healer:latest >/dev/null 2>&1
+  minikube image load ai-predictor-healer:latest >/dev/null 2>&1
 elif [ "${CLUSTER_TYPE}" = "kind" ]; then
-  kind load docker-image k8s-healer:latest --name "${CLUSTER_NAME}" >/dev/null 2>&1
+  kind load docker-image ai-predictor-healer:latest --name "${CLUSTER_NAME}" >/dev/null 2>&1
 fi
 
 echo "   Applying manifests..."
@@ -58,7 +58,7 @@ kubectl apply -f deployments/deployment.yaml >/dev/null 2>&1
 
 echo "   Waiting for healer to start..."
 kubectl wait --for=condition=available --timeout=90s \
-  deployment/k8s-healer -n healer-system >/dev/null 2>&1
+  deployment/ai-predictor-healer -n ai-healer-system >/dev/null 2>&1
 
 echo "✅ Healer deployed!"
 echo ""
@@ -105,7 +105,7 @@ echo ""
 echo "📊 Next steps for your presentation:"
 echo ""
 echo "1. Open the Healer dashboard:"
-echo "   kubectl port-forward svc/k8s-healer 8080:8080 -n healer-system"
+echo "   kubectl port-forward svc/ai-predictor-healer 8080:8080 -n ai-healer-system"
 echo "   → http://localhost:8080"
 echo ""
 echo "2. (Optional) Open the problem app:"
@@ -113,7 +113,7 @@ echo "   kubectl port-forward svc/problem-app 8081:80 -n default"
 echo "   → http://localhost:8081"
 echo ""
 echo "3. Watch healer logs:"
-echo "   kubectl logs -f deployment/k8s-healer -n healer-system"
+echo "   kubectl logs -f deployment/ai-predictor-healer -n ai-healer-system"
 echo ""
 echo "4. Watch problem app get restarted:"
 echo "   kubectl get pods -n default -l app=problem-app -w"

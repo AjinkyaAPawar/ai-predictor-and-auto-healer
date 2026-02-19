@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"k8s-healer/internal/actions"
-	"k8s-healer/internal/api"
-	"k8s-healer/internal/collector"
-	"k8s-healer/internal/diagnostics"
-	"k8s-healer/internal/predictor"
-	"k8s-healer/internal/store"
+	"ai-predictor-healer/internal/actions"
+	"ai-predictor-healer/internal/api"
+	"ai-predictor-healer/internal/collector"
+	"ai-predictor-healer/internal/diagnostics"
+	"ai-predictor-healer/internal/predictor"
+	"ai-predictor-healer/internal/store"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -70,7 +70,7 @@ func main() {
 
 	cfg := loadConfig()
 
-	fmt.Println("🤖 K8s AI Healer v4.0 - COMPLETE SYSTEM WITH API")
+	fmt.Println("🤖 AI Predictor & Auto-Healer v4.0 - COMPLETE SYSTEM WITH API")
 	fmt.Printf("📋 Config: port=%s, dryRun=%v, checkInterval=%s, logLevel=%s\n",
 		cfg.port, cfg.dryRun, cfg.checkInterval, cfg.logLevel)
 

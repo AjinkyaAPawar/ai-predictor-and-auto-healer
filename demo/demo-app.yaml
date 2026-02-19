@@ -1,4 +1,4 @@
-# Demo application for showcasing K8s AI Healer capabilities
+# Demo application for showcasing AI Predictor & Auto-Healer capabilities
 # This creates intentional problems that the healer will detect and fix
 ---
 apiVersion: v1

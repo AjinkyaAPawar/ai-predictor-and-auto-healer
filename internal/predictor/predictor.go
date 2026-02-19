@@ -3,7 +3,7 @@ package predictor
 import (
 	"fmt"
 	"math"
-	"k8s-healer/internal/collector"
+	"ai-predictor-healer/internal/collector"
 )
 
 type Predictor struct {

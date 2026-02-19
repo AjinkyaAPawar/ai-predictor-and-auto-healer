@@ -6,7 +6,7 @@ import (
     "log"
     "time"
 
-    "k8s-healer/internal/predictor"
+    "ai-predictor-healer/internal/predictor"
 
     "k8s.io/client-go/kubernetes"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

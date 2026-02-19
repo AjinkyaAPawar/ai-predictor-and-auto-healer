@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-K8s AI Healer Demo App — Intentionally Problematic Service
+AI Predictor & Auto-Healer Demo App — Intentionally Problematic Service
 This app simulates various infrastructure problems to showcase the healer's capabilities.
 """
 import os

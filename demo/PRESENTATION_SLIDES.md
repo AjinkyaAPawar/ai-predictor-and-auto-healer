@@ -1,11 +1,11 @@
-# 📊 K8s AI Healer — Presentation Slides Outline
+# 📊 AI Predictor & Auto-Healer — Presentation Slides Outline
 
 Use this as a guide for your hackathon presentation slides.
 
 ---
 
 ## Slide 1: Title
-**K8s AI Healer**
+**AI Predictor & Auto-Healer**
 *Intelligent Infrastructure Auto-Healing for Kubernetes*
 
 Your Team Name | Hackathon Name | Date
@@ -27,7 +27,7 @@ Your Team Name | Hackathon Name | Date
 ---
 
 ## Slide 3: Our Solution
-**K8s AI Healer — Intelligent Auto-Remediation**
+**AI Predictor & Auto-Healer — Intelligent Auto-Remediation**
 
 ✅ Detects problems Kubernetes health checks miss
 ✅ Predicts failures 24-72 hours ahead using AI
@@ -41,7 +41,7 @@ Your Team Name | Hackathon Name | Date
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│              K8s AI Healer (Controller Pod)             │
+│              AI Predictor & Auto-Healer (Controller Pod)             │
 │                                                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
 │  │   Metrics    │→ │      AI      │→ │   Healing    │ │
@@ -176,7 +176,7 @@ Talk through 2-3 live healing actions as they appear.
 ---
 
 ## Slide 11: Metrics That Matter
-**Before vs After K8s AI Healer**
+**Before vs After AI Predictor & Auto-Healer**
 
 | Metric | Without Healer | With Healer | Improvement |
 |---|---|---|---|
@@ -236,7 +236,7 @@ k8s-ai-healer/
 ## Presentation Tips
 
 ### Opening (30 seconds):
-> "Kubernetes is great at restarting dead containers. But what about containers that are alive but stuck? Or DNS failures? Or memory leaks that won't crash for another 18 hours? That's what we built K8s AI Healer to solve."
+> "Kubernetes is great at restarting dead containers. But what about containers that are alive but stuck? Or DNS failures? Or memory leaks that won't crash for another 18 hours? That's what we built AI Predictor & Auto-Healer to solve."
 
 ### Closing (30 seconds):
 > "We've shown you a system that predicts failures days in advance and heals them automatically. In production, this means fewer outages, lower on-call burden, and faster recovery times. All with zero external dependencies. Thank you."

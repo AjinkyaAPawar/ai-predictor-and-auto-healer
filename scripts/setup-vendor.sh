@@ -1,6 +1,6 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
-# K8s AI Healer — Vendor Setup (run ONCE with internet access)
+# AI Predictor & Auto-Healer — Vendor Setup (run ONCE with internet access)
 #
 # This downloads all Go dependencies into the vendor/ directory.
 # After this runs successfully, the entire build + deploy chain works

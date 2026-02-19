@@ -1,6 +1,6 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
-# K8s AI Healer — Demo Cleanup
+# AI Predictor & Auto-Healer — Demo Cleanup
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -12,5 +12,5 @@ kubectl delete namespace demo-app --ignore-not-found
 echo ""
 echo "✅ Demo apps removed"
 echo ""
-echo "The K8s AI Healer is still running. To remove it:"
+echo "The AI Predictor & Auto-Healer is still running. To remove it:"
 echo "  make undeploy"

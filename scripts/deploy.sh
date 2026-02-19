@@ -1,12 +1,12 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
-# K8s AI Healer — Build & Deploy (100% local, zero external registry)
+# AI Predictor & Auto-Healer — Build & Deploy (100% local, zero external registry)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-k8s-healer}"
+IMAGE_NAME="${IMAGE_NAME:-ai-predictor-healer}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
-NAMESPACE="healer-system"
+NAMESPACE="ai-healer-system"
 FULL_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
 
 # ── Guard: vendor/ must exist ─────────────────────────────────────────────────
@@ -81,17 +81,17 @@ kubectl apply --validate=false -f deployments/deployment.yaml
 echo ""
 echo "⏳ Waiting for deployment to become available (timeout: 120s)..."
 if ! kubectl wait --for=condition=available --timeout=120s \
-    deployment/k8s-healer -n "${NAMESPACE}" 2>/dev/null; then
+    deployment/ai-predictor-healer -n "${NAMESPACE}" 2>/dev/null; then
   echo "⚠️  wait timed out — checking rollout status..."
-  kubectl rollout status deployment/k8s-healer -n "${NAMESPACE}"
+  kubectl rollout status deployment/ai-predictor-healer -n "${NAMESPACE}"
 fi
 
 echo ""
 echo "✅ Deployment complete! Running entirely from local image."
 echo ""
 echo "   Pods:      kubectl get pods -n ${NAMESPACE}"
-echo "   Logs:      kubectl logs -f deployment/k8s-healer -n ${NAMESPACE}"
-echo "   Dashboard: kubectl port-forward svc/k8s-healer 8080:8080 -n ${NAMESPACE}"
+echo "   Logs:      kubectl logs -f deployment/ai-predictor-healer -n ${NAMESPACE}"
+echo "   Dashboard: kubectl port-forward svc/ai-predictor-healer 8080:8080 -n ${NAMESPACE}"
 echo "              → http://localhost:8080"
 
 # ── Optional: Force pod restart ───────────────────────────────────────────────
@@ -99,5 +99,5 @@ echo "              → http://localhost:8080"
 # you might want to force a restart to pick up the newly built image:
 #
 # Uncomment the following line to auto-restart after deploy:
-# kubectl rollout restart deployment/k8s-healer -n "${NAMESPACE}"
-# kubectl rollout status deployment/k8s-healer -n "${NAMESPACE}" --timeout=120s
+# kubectl rollout restart deployment/ai-predictor-healer -n "${NAMESPACE}"
+# kubectl rollout status deployment/ai-predictor-healer -n "${NAMESPACE}" --timeout=120s

@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: k8s-healer
-  namespace: healer-system
+  name: ai-predictor-healer
+  namespace: ai-healer-system
   labels:
     app.kubernetes.io/name: k8s-ai-healer
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: k8s-healer
+  name: ai-predictor-healer
   labels:
     app.kubernetes.io/name: k8s-ai-healer
 rules:
@@ -49,14 +49,14 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: k8s-healer
+  name: ai-predictor-healer
   labels:
     app.kubernetes.io/name: k8s-ai-healer
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: k8s-healer
+  name: ai-predictor-healer
 subjects:
 - kind: ServiceAccount
-  name: k8s-healer
-  namespace: healer-system
+  name: ai-predictor-healer
+  namespace: ai-healer-system

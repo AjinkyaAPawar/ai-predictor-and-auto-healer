@@ -1,12 +1,12 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
-# K8s AI Healer — Production Deploy (real healing, local image, zero external)
+# AI Predictor & Auto-Healer — Production Deploy (real healing, local image, zero external)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-k8s-healer}"
+IMAGE_NAME="${IMAGE_NAME:-ai-predictor-healer}"
 IMAGE_TAG="${IMAGE_TAG:-production}"
-NAMESPACE="healer-system"
+NAMESPACE="ai-healer-system"
 FULL_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
 
 echo "⚠️  ─────────────────────────────────────────────────────────────────────"
@@ -68,23 +68,23 @@ cat > "${PROD_MANIFEST}" << YAML
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: k8s-healer-production
+  name: ai-predictor-healer-production
   namespace: ${NAMESPACE}
   labels:
-    app: k8s-healer-production
+    app: ai-predictor-healer-production
     app.kubernetes.io/name: k8s-ai-healer
     app.kubernetes.io/version: "4.0"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: k8s-healer-production
+      app: ai-predictor-healer-production
   template:
     metadata:
       labels:
-        app: k8s-healer-production
+        app: ai-predictor-healer-production
     spec:
-      serviceAccountName: k8s-healer
+      serviceAccountName: ai-predictor-healer
       containers:
       - name: healer
         image: ${FULL_IMAGE}
@@ -151,13 +151,13 @@ kubectl apply --validate=false -f "${PROD_MANIFEST}"
 echo ""
 echo "⏳ Waiting for deployment (120s)..."
 if ! kubectl wait --for=condition=available --timeout=120s \
-    deployment/k8s-healer-production -n "${NAMESPACE}" 2>/dev/null; then
+    deployment/ai-predictor-healer-production -n "${NAMESPACE}" 2>/dev/null; then
   echo "⚠️  wait timed out — checking rollout status..."
-  kubectl rollout status deployment/k8s-healer-production -n "${NAMESPACE}"
+  kubectl rollout status deployment/ai-predictor-healer-production -n "${NAMESPACE}"
 fi
 
 echo ""
 echo "✅ Production deployment complete!"
-echo "   Logs:      kubectl logs -f deployment/k8s-healer-production -n ${NAMESPACE}"
-echo "   Dashboard: kubectl port-forward deployment/k8s-healer-production 8080:8080 -n ${NAMESPACE}"
+echo "   Logs:      kubectl logs -f deployment/ai-predictor-healer-production -n ${NAMESPACE}"
+echo "   Dashboard: kubectl port-forward deployment/ai-predictor-healer-production 8080:8080 -n ${NAMESPACE}"
 echo "              → http://localhost:8080"

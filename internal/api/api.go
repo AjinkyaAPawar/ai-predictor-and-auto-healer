@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"k8s-healer/internal/store"
+	"ai-predictor-healer/internal/store"
 )
 
 //go:embed web/*
@@ -165,7 +165,7 @@ func (s *APIServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":    "UP",
 		"timestamp": time.Now(),
-		"service":   "k8s-ai-healer",
+		"service":   "ai-predictor-healer",
 		"version":   "4.0",
 	})
 }

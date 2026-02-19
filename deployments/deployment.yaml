@@ -1,37 +1,37 @@
-# K8s AI Healer — Deployment + Service
+# AI Predictor & Auto-Healer — Deployment + Service
 # ─────────────────────────────────────────────────────────────────────────────
 # Uses the locally built image. Build it first:
-#   docker build -t k8s-healer:latest .
+#   docker build -t ai-predictor-healer:latest .
 #
-# For minikube: minikube image load k8s-healer:latest
-# For kind:     kind load docker-image k8s-healer:latest
+# For minikube: minikube image load ai-predictor-healer:latest
+# For kind:     kind load docker-image ai-predictor-healer:latest
 # ─────────────────────────────────────────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: k8s-healer
-  namespace: healer-system
+  name: ai-predictor-healer
+  namespace: ai-healer-system
   labels:
-    app: k8s-healer
+    app: ai-predictor-healer
     app.kubernetes.io/name: k8s-ai-healer
     app.kubernetes.io/version: "4.0"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: k8s-healer
+      app: ai-predictor-healer
   template:
     metadata:
       labels:
-        app: k8s-healer
+        app: ai-predictor-healer
         app.kubernetes.io/name: k8s-ai-healer
     spec:
-      serviceAccountName: k8s-healer
+      serviceAccountName: ai-predictor-healer
       containers:
       - name: healer
-        # Built locally: docker build -t k8s-healer:latest .
+        # Built locally: docker build -t ai-predictor-healer:latest .
         # Change to your internal registry if needed.
-        image: k8s-healer:latest
+        image: ai-predictor-healer:latest
         # Never = only use locally present image, never pull from external registry
         imagePullPolicy: Never
         ports:
@@ -87,14 +87,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: k8s-healer
-  namespace: healer-system
+  name: ai-predictor-healer
+  namespace: ai-healer-system
   labels:
-    app: k8s-healer
+    app: ai-predictor-healer
     app.kubernetes.io/name: k8s-ai-healer
 spec:
   selector:
-    app: k8s-healer
+    app: ai-predictor-healer
   ports:
   - name: http
     port: 8080

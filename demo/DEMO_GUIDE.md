@@ -1,6 +1,6 @@
-# 🎯 K8s AI Healer — Hackathon Demo Guide
+# 🎯 AI Predictor & Auto-Healer — Hackathon Demo Guide
 
-This guide shows you exactly how to demo the K8s AI Healer to impress judges and audience.
+This guide shows you exactly how to demo the AI Predictor & Auto-Healer to impress judges and audience.
 
 ---
 
@@ -9,7 +9,7 @@ This guide shows you exactly how to demo the K8s AI Healer to impress judges and
 ### Part 1: Setup & Introduction (2 min)
 
 **What to say:**
-> "We built K8s AI Healer — an intelligent system that detects and fixes infrastructure problems that Kubernetes doesn't see. Unlike traditional monitoring which only alerts humans, our system uses AI to predict failures 24-72 hours ahead and automatically heals them."
+> "We built AI Predictor & Auto-Healer — an intelligent system that detects and fixes infrastructure problems that Kubernetes doesn't see. Unlike traditional monitoring which only alerts humans, our system uses AI to predict failures 24-72 hours ahead and automatically heals them."
 
 **What to show:**
 1. Open the dashboard in your browser (make it FULL SCREEN)
@@ -101,7 +101,7 @@ Point out that Kubernetes shows them as "Running" but they have problems brewing
 **What to show:**
 Open a terminal and show the logs:
 ```bash
-kubectl logs -f deployment/k8s-healer -n healer-system --tail=50
+kubectl logs -f deployment/ai-predictor-healer -n ai-healer-system --tail=50
 ```
 
 Point out:
@@ -156,7 +156,7 @@ Then click through to `/actions` endpoint or show the terminal logs.
 make deploy
 
 # Port-forward the dashboard
-kubectl port-forward svc/k8s-healer 8080:8080 -n healer-system
+kubectl port-forward svc/ai-predictor-healer 8080:8080 -n ai-healer-system
 
 # Open dashboard
 open http://localhost:8080
@@ -171,7 +171,7 @@ kubectl apply -f demo/demo-app.yaml
 kubectl get pods -n demo-app -w
 
 # Watch healer logs
-kubectl logs -f deployment/k8s-healer -n healer-system --tail=50
+kubectl logs -f deployment/ai-predictor-healer -n ai-healer-system --tail=50
 
 # Check healing actions
 curl http://localhost:8080/status | jq '.recent_actions'
@@ -193,7 +193,7 @@ make undeploy
 
 ## 🎤 Elevator Pitch (30 seconds)
 
-> "K8s AI Healer is an intelligent infrastructure auto-healing system. While Kubernetes only checks if your containers are alive, we detect invisible problems like stuck processes, DNS failures, memory leaks, and disk issues. We use AI to predict failures 24-72 hours ahead and automatically fix them — no human intervention needed. Everything runs locally with zero external dependencies. We've demonstrated it healing 5 different failure types in real-time."
+> "AI Predictor & Auto-Healer is an intelligent infrastructure auto-healing system. While Kubernetes only checks if your containers are alive, we detect invisible problems like stuck processes, DNS failures, memory leaks, and disk issues. We use AI to predict failures 24-72 hours ahead and automatically fix them — no human intervention needed. Everything runs locally with zero external dependencies. We've demonstrated it healing 5 different failure types in real-time."
 
 ---
 

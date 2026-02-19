@@ -1,6 +1,6 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
-# K8s AI Healer — Fast Redeploy (for code-test iteration)
+# AI Predictor & Auto-Healer — Fast Redeploy (for code-test iteration)
 #
 # This script:
 #   1. Rebuilds the Docker image (picks up your code changes)
@@ -12,9 +12,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-k8s-healer}"
+IMAGE_NAME="${IMAGE_NAME:-ai-predictor-healer}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
-NAMESPACE="healer-system"
+NAMESPACE="ai-healer-system"
 FULL_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
 
 # Guard: vendor/ must exist
@@ -53,11 +53,11 @@ echo "✅ Loaded"
 # Step 3: Force pod restart
 echo ""
 echo "♻️  Forcing rollout restart to pick up new image..."
-kubectl rollout restart deployment/k8s-healer -n "${NAMESPACE}"
+kubectl rollout restart deployment/ai-predictor-healer -n "${NAMESPACE}"
 
 echo "⏳ Waiting for new pods to come up (120s)..."
-kubectl rollout status deployment/k8s-healer -n "${NAMESPACE}" --timeout=120s
+kubectl rollout status deployment/ai-predictor-healer -n "${NAMESPACE}" --timeout=120s
 
 echo ""
 echo "✅ Redeployed! New code is now running."
-echo "   Logs: kubectl logs -f deployment/k8s-healer -n ${NAMESPACE}"
+echo "   Logs: kubectl logs -f deployment/ai-predictor-healer -n ${NAMESPACE}"

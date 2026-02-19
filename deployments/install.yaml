@@ -1,17 +1,17 @@
-# K8s AI Healer — All-in-One Local Installation Manifest
+# AI Predictor & Auto-Healer — All-in-One Local Installation Manifest
 # ─────────────────────────────────────────────────────────────────────────────
 # PRE-REQUISITE: Build the image locally first:
 #
-#   docker build -t k8s-healer:latest .
+#   docker build -t ai-predictor-healer:latest .
 #
 # For minikube — load the image so the cluster can see it:
-#   minikube image load k8s-healer:latest
+#   minikube image load ai-predictor-healer:latest
 #
 # For kind:
-#   kind load docker-image k8s-healer:latest
+#   kind load docker-image ai-predictor-healer:latest
 #
 # For other clusters — push to your internal registry and update the
-# `image:` field below to match (e.g. registry.local/k8s-healer:latest).
+# `image:` field below to match (e.g. registry.local/ai-predictor-healer:latest).
 #
 # Apply with:
 #   kubectl apply -f deployments/install.yaml
@@ -20,7 +20,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: healer-system
+  name: ai-healer-system
   labels:
     app.kubernetes.io/name: k8s-ai-healer
     app.kubernetes.io/managed-by: kubectl
@@ -28,15 +28,15 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: k8s-healer
-  namespace: healer-system
+  name: ai-predictor-healer
+  namespace: ai-healer-system
   labels:
     app.kubernetes.io/name: k8s-ai-healer
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: k8s-healer
+  name: ai-predictor-healer
   labels:
     app.kubernetes.io/name: k8s-ai-healer
 rules:
@@ -68,46 +68,46 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: k8s-healer
+  name: ai-predictor-healer
   labels:
     app.kubernetes.io/name: k8s-ai-healer
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: k8s-healer
+  name: ai-predictor-healer
 subjects:
 - kind: ServiceAccount
-  name: k8s-healer
-  namespace: healer-system
+  name: ai-predictor-healer
+  namespace: ai-healer-system
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: k8s-healer
-  namespace: healer-system
+  name: ai-predictor-healer
+  namespace: ai-healer-system
   labels:
-    app: k8s-healer
+    app: ai-predictor-healer
     app.kubernetes.io/name: k8s-ai-healer
     app.kubernetes.io/version: "4.0"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: k8s-healer
+      app: ai-predictor-healer
   template:
     metadata:
       labels:
-        app: k8s-healer
+        app: ai-predictor-healer
         app.kubernetes.io/name: k8s-ai-healer
     spec:
-      serviceAccountName: k8s-healer
+      serviceAccountName: ai-predictor-healer
       containers:
       - name: healer
         # ── LOCAL IMAGE ────────────────────────────────────────────────────
-        # Built from this repo with: docker build -t k8s-healer:latest .
+        # Built from this repo with: docker build -t ai-predictor-healer:latest .
         # Change to your internal registry if needed:
-        #   image: registry.yourcompany.com/k8s-healer:latest
-        image: k8s-healer:latest
+        #   image: registry.yourcompany.com/ai-predictor-healer:latest
+        image: ai-predictor-healer:latest
         # Never = only use locally present image (no external pull)
         imagePullPolicy: Never
         # ──────────────────────────────────────────────────────────────────
@@ -164,14 +164,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: k8s-healer
-  namespace: healer-system
+  name: ai-predictor-healer
+  namespace: ai-healer-system
   labels:
-    app: k8s-healer
+    app: ai-predictor-healer
     app.kubernetes.io/name: k8s-ai-healer
 spec:
   selector:
-    app: k8s-healer
+    app: ai-predictor-healer
   ports:
   - name: http
     port: 8080

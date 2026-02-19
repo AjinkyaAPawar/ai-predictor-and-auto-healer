@@ -1,4 +1,4 @@
-# K8s AI Healer — Makefile
+# AI Predictor & Auto-Healer — Makefile
 # ─────────────────────────────────────────────────────────────────────────────
 # FIRST TIME SETUP (requires internet, run once):
 #   make vendor        # downloads all Go deps into vendor/
@@ -9,10 +9,10 @@
 #   make deploy        # build + load into cluster + apply manifests
 # ─────────────────────────────────────────────────────────────────────────────
 
-BINARY     := healer
-IMAGE_NAME := k8s-healer
+BINARY     := ai-healer
+IMAGE_NAME := ai-predictor-healer
 IMAGE_TAG  := latest
-NAMESPACE  := healer-system
+NAMESPACE  := ai-healer-system
 FULL_IMAGE := $(IMAGE_NAME):$(IMAGE_TAG)
 
 .PHONY: all vendor build build-linux run run-dry docker-build load-image \
@@ -158,26 +158,26 @@ deploy: load-image
 	@echo ""
 	@echo "⏳ Waiting for deployment to become available (timeout: 120s)..."
 	kubectl wait --for=condition=available --timeout=120s \
-		deployment/k8s-healer -n $(NAMESPACE) 2>/dev/null || \
-	kubectl rollout status deployment/k8s-healer -n $(NAMESPACE)
+		deployment/ai-predictor-healer -n $(NAMESPACE) 2>/dev/null || \
+	kubectl rollout status deployment/ai-predictor-healer -n $(NAMESPACE)
 	@echo ""
 	@echo "✅ Deployed! Running from local image — zero external dependencies."
 	@echo ""
 	@echo "   Pods:      kubectl get pods -n $(NAMESPACE)"
-	@echo "   Logs:      kubectl logs -f deployment/k8s-healer -n $(NAMESPACE)"
-	@echo "   Dashboard: kubectl port-forward svc/k8s-healer 8080:8080 -n $(NAMESPACE)"
+	@echo "   Logs:      kubectl logs -f deployment/ai-predictor-healer -n $(NAMESPACE)"
+	@echo "   Dashboard: kubectl port-forward svc/ai-predictor-healer 8080:8080 -n $(NAMESPACE)"
 	@echo "              → http://localhost:8080"
 
 ## redeploy: Rebuild image + force restart (fast iteration: code change → running pod)
 redeploy: load-image
 	@echo ""
 	@echo "♻️  Force-restarting deployment to pick up new image..."
-	kubectl rollout restart deployment/k8s-healer -n $(NAMESPACE)
+	kubectl rollout restart deployment/ai-predictor-healer -n $(NAMESPACE)
 	@echo "⏳ Waiting for rollout to complete (timeout: 120s)..."
-	kubectl rollout status deployment/k8s-healer -n $(NAMESPACE) --timeout=120s
+	kubectl rollout status deployment/ai-predictor-healer -n $(NAMESPACE) --timeout=120s
 	@echo ""
 	@echo "✅ Redeployed! New image is now running."
-	@echo "   Logs: kubectl logs -f deployment/k8s-healer -n $(NAMESPACE)"
+	@echo "   Logs: kubectl logs -f deployment/ai-predictor-healer -n $(NAMESPACE)"
 
 ## undeploy: Remove all Kubernetes resources
 undeploy: check-cluster
@@ -191,7 +191,7 @@ undeploy: check-cluster
 
 ## logs: Tail live logs from the deployed pod
 logs:
-	kubectl logs -f deployment/k8s-healer -n $(NAMESPACE)
+	kubectl logs -f deployment/ai-predictor-healer -n $(NAMESPACE)
 
 ## status: Show deployment, pod, and service status
 status:
@@ -199,13 +199,13 @@ status:
 	@kubectl config current-context 2>/dev/null || echo "No context set"
 	@echo ""
 	@echo "=== Deployment ==="
-	@kubectl get deployment k8s-healer -n $(NAMESPACE) 2>/dev/null || echo "Not deployed"
+	@kubectl get deployment ai-predictor-healer -n $(NAMESPACE) 2>/dev/null || echo "Not deployed"
 	@echo ""
 	@echo "=== Pods ==="
 	@kubectl get pods -n $(NAMESPACE) -o wide 2>/dev/null || echo "No pods found"
 	@echo ""
 	@echo "=== Service ==="
-	@kubectl get svc k8s-healer -n $(NAMESPACE) 2>/dev/null || echo "No service found"
+	@kubectl get svc ai-predictor-healer -n $(NAMESPACE) 2>/dev/null || echo "No service found"
 
 # ── Code quality ──────────────────────────────────────────────────────────────
 
@@ -233,7 +233,7 @@ clean:
 ## help: Show this help message
 help:
 	@echo ""
-	@echo "K8s AI Healer — Make targets:"
+	@echo "AI Predictor & Auto-Healer — Make targets:"
 	@echo ""
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## /  /'
 	@echo ""

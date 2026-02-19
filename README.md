@@ -1,8 +1,10 @@
-# K8s AI Infrastructure Healer
+# AI Predictor & Auto-Healer
 
 Advanced AI-powered Kubernetes monitoring and auto-healing system — **100% self-contained, zero external dependencies**.
 
 > Built and deployed entirely from local source. No external registry, no remote manifests, no internet required after initial vendor setup.
+
+**Hackathon Project**: `ai-predictor-and-auto-healer`
 
 ---
 
@@ -22,7 +24,7 @@ After the first `make vendor`, the project builds and deploys forever with zero 
 ## Project Structure
 
 ```
-k8s-ai-healer/
+ai-predictor-and-auto-healer/
 ├── cmd/healer/main.go              # Entry point — reads env vars, wires components
 ├── internal/
 │   ├── actions/actions.go          # Pod restart, deployment scale-up
@@ -78,7 +80,7 @@ This automatically:
 ### Step 3 — Open the dashboard
 
 ```bash
-kubectl port-forward svc/k8s-healer 8080:8080 -n healer-system
+kubectl port-forward svc/ai-predictor-healer 8080:8080 -n healer-system
 # Then open: http://localhost:8080
 ```
 
@@ -103,11 +105,11 @@ make deploy
 go mod vendor
 
 # 2. Build the Docker image
-docker build -t k8s-healer:latest .
+docker build -t ai-predictor-healer:latest .
 
 # 3. Load into your cluster
-minikube image load k8s-healer:latest      # minikube
-# kind load docker-image k8s-healer:latest  # kind
+minikube image load ai-predictor-healer:latest      # minikube
+# kind load docker-image ai-predictor-healer:latest  # kind
 
 # 4. Apply manifests
 kubectl apply -f deployments/namespace.yaml
@@ -116,7 +118,7 @@ kubectl apply -f deployments/deployment.yaml
 
 # 5. Wait for it to come up
 kubectl wait --for=condition=available --timeout=90s \
-  deployment/k8s-healer -n healer-system
+  deployment/ai-predictor-healer -n healer-system
 ```
 
 ### Option C — Using the all-in-one manifest
@@ -142,28 +144,28 @@ make run-dry   # dry-run mode: logs what would happen, no real actions
 
 ```bash
 make deploy
-# Automatically runs: minikube image load k8s-healer:latest
+# Automatically runs: minikube image load ai-predictor-healer:latest
 ```
 
 ### kind
 
 ```bash
 make deploy
-# Automatically runs: kind load docker-image k8s-healer:latest --name <cluster>
+# Automatically runs: kind load docker-image ai-predictor-healer:latest --name <cluster>
 ```
 
 ### Internal registry (production clusters)
 
 ```bash
 # Build locally
-docker build -t k8s-healer:latest .
+docker build -t ai-predictor-healer:latest .
 
 # Tag for your internal registry
-docker tag k8s-healer:latest registry.yourcompany.com/k8s-healer:latest
-docker push registry.yourcompany.com/k8s-healer:latest
+docker tag ai-predictor-healer:latest registry.yourcompany.com/ai-predictor-healer:latest
+docker push registry.yourcompany.com/ai-predictor-healer:latest
 
 # Update the image field in deployments/deployment.yaml:
-#   image: registry.yourcompany.com/k8s-healer:latest
+#   image: registry.yourcompany.com/ai-predictor-healer:latest
 #   imagePullPolicy: IfNotPresent   (change from Never for registry use)
 
 kubectl apply -f deployments/namespace.yaml
@@ -247,7 +249,7 @@ curl http://localhost:8080/health
 {
   "status": "UP",
   "timestamp": "2024-01-01T12:00:00Z",
-  "service": "k8s-ai-healer",
+  "service": "ai-predictor-and-auto-healer",
   "version": "3.0"
 }
 ```
@@ -386,17 +388,17 @@ kubectl top pods -A
 ### Image not found — ErrImageNeverPull
 
 ```
-Failed to pull image "k8s-healer:latest": rpc error: ... ErrImageNeverPull
+Failed to pull image "ai-predictor-healer:latest": rpc error: ... ErrImageNeverPull
 ```
 
 The image isn't loaded into the cluster. Run:
 
 ```bash
 # minikube
-minikube image load k8s-healer:latest
+minikube image load ai-predictor-healer:latest
 
 # kind
-kind load docker-image k8s-healer:latest --name <your-cluster-name>
+kind load docker-image ai-predictor-healer:latest --name <your-cluster-name>
 ```
 
 Or run `make deploy` which does this automatically.
@@ -406,10 +408,10 @@ Or run `make deploy` which does this automatically.
 ```bash
 # Check if the service account has the right permissions
 kubectl auth can-i get pods \
-  --as=system:serviceaccount:healer-system:k8s-healer -A
+  --as=system:serviceaccount:healer-system:ai-predictor-healer -A
 
 kubectl auth can-i create pods/exec \
-  --as=system:serviceaccount:healer-system:k8s-healer -A
+  --as=system:serviceaccount:healer-system:ai-predictor-healer -A
 ```
 
 Re-apply if needed:
@@ -430,14 +432,14 @@ Expected behaviour for minimal/distroless containers (no `/bin/sh`, `df`, `nsloo
 # 1. Asks for confirmation
 # 2. Builds image with vendor/
 # 3. Loads into cluster
-# 4. Deploys as k8s-healer-production with real healing actions
+# 4. Deploys as ai-predictor-healer-production with real healing actions
 ./scripts/deploy-production.sh
 ```
 
 Or with a custom image tag:
 
 ```bash
-IMAGE_NAME=k8s-healer IMAGE_TAG=v4.0 ./scripts/deploy-production.sh
+IMAGE_NAME=ai-predictor-healer IMAGE_TAG=v4.0 ./scripts/deploy-production.sh
 ```
 
 ---
@@ -450,8 +452,8 @@ make vendor
 
 # Edit code, then fast rebuild + redeploy:
 make docker-build
-minikube image load k8s-healer:latest   # or kind load ...
-kubectl rollout restart deployment/k8s-healer -n healer-system
+minikube image load ai-predictor-healer:latest   # or kind load ...
+kubectl rollout restart deployment/ai-predictor-healer -n healer-system
 
 # Watch logs
 make logs
@@ -505,14 +507,14 @@ The image is tagged `:latest` and `imagePullPolicy: Never` is set. Kubernetes ca
 ```bash
 # 1. Rebuild and load
 make docker-build
-minikube image load k8s-healer:latest    # or: kind load docker-image ...
+minikube image load ai-predictor-healer:latest    # or: kind load docker-image ...
 
 # 2. Force restart
-kubectl rollout restart deployment/k8s-healer -n healer-system
+kubectl rollout restart deployment/ai-predictor-healer -n healer-system
 
 # 3. Wait and watch
-kubectl rollout status deployment/k8s-healer -n healer-system
-kubectl logs -f deployment/k8s-healer -n healer-system
+kubectl rollout status deployment/ai-predictor-healer -n healer-system
+kubectl logs -f deployment/ai-predictor-healer -n healer-system
 ```
 
 ### Using versioned tags (for staging/production)
@@ -522,10 +524,10 @@ kubectl logs -f deployment/k8s-healer -n healer-system
 IMAGE_TAG=v1.2.3 make docker-build
 
 # Load it
-minikube image load k8s-healer:v1.2.3
+minikube image load ai-predictor-healer:v1.2.3
 
 # Update deployments/deployment.yaml:
-#   image: k8s-healer:v1.2.3
+#   image: ai-predictor-healer:v1.2.3
 #   imagePullPolicy: Never
 
 kubectl apply -f deployments/deployment.yaml
@@ -549,7 +551,7 @@ make deploy
 ./demo/start-demo.sh
 
 # 3. Open the dashboard (in another terminal)
-kubectl port-forward svc/k8s-healer 8080:8080 -n healer-system
+kubectl port-forward svc/ai-predictor-healer 8080:8080 -n healer-system
 
 # 4. Open http://localhost:8080 in FULL SCREEN mode
 

@@ -1,4 +1,4 @@
-# 🏆 K8s AI Healer — Hackathon Demo Script
+# 🏆 AI Predictor & Auto-Healer — Hackathon Demo Script
 
 > **Complete presentation guide: 10-15 minutes**
 
@@ -28,11 +28,11 @@ make vendor   # if not already done
 make deploy
 
 # Verify it's running
-kubectl get pods -n healer-system
-kubectl logs -f deployment/k8s-healer -n healer-system
+kubectl get pods -n ai-healer-system
+kubectl logs -f deployment/ai-predictor-healer -n ai-healer-system
 
 # Open the dashboard in another terminal
-kubectl port-forward svc/k8s-healer 8080:8080 -n healer-system
+kubectl port-forward svc/ai-predictor-healer 8080:8080 -n ai-healer-system
 
 # Visit http://localhost:8080 — leave this tab open for the demo
 ```
@@ -72,7 +72,7 @@ kubectl run -it --rm load-gen --image=busybox --restart=Never -- sh -c \
 ### INTRO (1 min)
 
 **Say:**
-> "Hi everyone! I'm [Your Name] and today I'm presenting **K8s AI Healer** — an autonomous infrastructure repair system that fixes Kubernetes problems before they impact your applications."
+> "Hi everyone! I'm [Your Name] and today I'm presenting **AI Predictor & Auto-Healer** — an autonomous infrastructure repair system that fixes Kubernetes problems before they impact your applications."
 > 
 > "The challenge we're solving: Kubernetes health checks only detect surface-level issues. They miss **stuck containers**, **memory leaks**, **disk space exhaustion**, and **network problems**. By the time these show up in your monitoring, it's already too late."
 >
@@ -164,7 +164,7 @@ kubectl port-forward svc/problem-app 8081:80 -n default
 **Action:** Open a terminal and show logs
 
 ```bash
-kubectl logs -f deployment/k8s-healer -n healer-system --tail=50
+kubectl logs -f deployment/ai-predictor-healer -n ai-healer-system --tail=50
 ```
 
 **Say:**
