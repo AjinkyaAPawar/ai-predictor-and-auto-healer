@@ -273,3 +273,75 @@ body{
   margin-bottom: 16px;
   opacity: 0.3;
 }
+
+/* Incident Severity Breakdown */
+.severity-card {
+  background: var(--panel2);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  border: 2px solid var(--stroke);
+  transition: transform 0.2s;
+}
+
+.severity-card:hover {
+  transform: translateY(-4px);
+}
+
+.severity-card.critical {
+  border-color: var(--crit);
+}
+
+.severity-card.high {
+  border-color: var(--warn);
+}
+
+.severity-card.medium {
+  border-color: #7ae2ff;
+}
+
+.severity-card.low {
+  border-color: var(--ok);
+}
+
+.severity-count {
+  font-size: 48px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.severity-card.critical .severity-count {
+  color: var(--crit);
+}
+
+.severity-card.high .severity-count {
+  color: var(--warn);
+}
+
+.severity-card.medium .severity-count {
+  color: #7ae2ff;
+}
+
+.severity-card.low .severity-count {
+  color: var(--ok);
+}
+
+.severity-label {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+
+/* Demo Mode Panel */
+#panelDemoMode .panel-body {
+  background: rgba(122, 226, 255, 0.05);
+  border: 2px dashed rgba(122, 226, 255, 0.3);
+  border-radius: 8px;
+}
+
+#panelDemoMode .btn {
+  font-weight: 600;
+  padding: 14px 24px;
+  font-size: 16px;
+}

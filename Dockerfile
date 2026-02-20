@@ -27,7 +27,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
       -mod=vendor \
       -ldflags="-s -w -extldflags=-static" \
       -o /ai-healer \
-      cmd/ai-healer/main.go
+      cmd/healer/main.go
 
 # ── Stage 2: Minimal runtime image ──────────────────────────────────────────
 # Using scratch = zero OS packages, zero shell, zero CVEs from base image

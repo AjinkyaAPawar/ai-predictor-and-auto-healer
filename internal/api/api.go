@@ -12,14 +12,16 @@ import (
 	"time"
 
 	"ai-predictor-healer/internal/store"
+	"ai-predictor-healer/internal/demo"
 )
 
 //go:embed web/*
 var webFS embed.FS
 
 type APIServer struct {
-	store *store.OpsStore
-	port  string
+	store    *store.OpsStore
+	port     string
+	demoMode *demo.DemoMode
 }
 
 type StatusResponse struct {
@@ -31,10 +33,11 @@ type StatusResponse struct {
 }
 
 
-func NewAPIServer(opsStore *store.OpsStore, port string) *APIServer {
+func NewAPIServer(opsStore *store.OpsStore, port string, demoMode *demo.DemoMode) *APIServer {
 	return &APIServer{
-		store: opsStore,
-		port:  port,
+		store:    opsStore,
+		port:     port,
+		demoMode: demoMode,
 	}
 }
 
@@ -49,6 +52,11 @@ func (s *APIServer) Start() {
 	http.HandleFunc("/api/v1/snapshot", s.handleSnapshotV1)
 	http.HandleFunc("/api/v1/timeline", s.handleTimelineV1)
 	http.HandleFunc("/api/v1/stream", s.handleStreamV1)
+	
+	// Demo mode endpoints
+	http.HandleFunc("/api/demo/start", s.handleDemoStart)
+	http.HandleFunc("/api/demo/stop", s.handleDemoStop)
+	http.HandleFunc("/api/demo/status", s.handleDemoStatus)
 
 	fmt.Printf("🌐 API Server starting on port %s\n", s.port)
 	fmt.Printf("📊 Access at: http://localhost:%s\n", s.port)
@@ -236,4 +244,44 @@ func writeJSON(w http.ResponseWriter, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(payload)
+}
+
+func (s *APIServer) handleDemoStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	scenario := r.URL.Query().Get("scenario")
+	if scenario == "" {
+		scenario = "memory_leak"
+	}
+	
+	s.demoMode.Start(scenario)
+	
+	writeJSON(w, map[string]interface{}{
+		"status": "started",
+		"scenario": scenario,
+		"message": "Demo mode activated",
+	})
+}
+
+func (s *APIServer) handleDemoStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	s.demoMode.Stop()
+	
+	writeJSON(w, map[string]interface{}{
+		"status": "stopped",
+		"message": "Demo mode deactivated",
+	})
+}
+
+func (s *APIServer) handleDemoStatus(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, map[string]interface{}{
+		"active": s.demoMode.IsActive(),
+	})
 }

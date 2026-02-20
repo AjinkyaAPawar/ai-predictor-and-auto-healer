@@ -17,6 +17,7 @@ import (
 	"ai-predictor-healer/internal/diagnostics"
 	"ai-predictor-healer/internal/predictor"
 	"ai-predictor-healer/internal/store"
+	"ai-predictor-healer/internal/demo"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -88,9 +89,10 @@ func main() {
 	diagEngine := diagnostics.New(clientset, restConfig)
 	autoHealer := diagnostics.NewAutoHealer(diagEngine, cfg.dryRun)
 	opsStore := store.New(2000)
+	demoMode := demo.NewDemoMode()
 
-	// Start HTTP API Server
-	apiServer := api.NewAPIServer(opsStore, cfg.port)
+	// Start HTTP API Server with demo mode
+	apiServer := api.NewAPIServer(opsStore, cfg.port, demoMode)
 	apiServer.Start()
 
 	fmt.Println("🚀 AI Monitoring started - COMPLETE SYSTEM ACTIVE")
@@ -98,12 +100,13 @@ func main() {
 	fmt.Printf("🌐 Web Dashboard:  http://localhost:%s\n", cfg.port)
 	fmt.Printf("📊 Status API:     http://localhost:%s/status\n", cfg.port)
 	fmt.Printf("🩺 Health Check:   http://localhost:%s/health\n", cfg.port)
+	fmt.Printf("🎬 Demo Mode API:  http://localhost:%s/api/demo/start?scenario=memory_leak\n", cfg.port)
 
 	if cfg.dryRun {
 		fmt.Println("⚠️  DRY-RUN mode enabled — no real healing actions will be taken")
 	}
 
-	for i := 1; ; i++ {
+		for i := 1; ; i++ {
 		ctx := context.TODO()
 		cycleTs := time.Now()
 
@@ -114,6 +117,9 @@ func main() {
 			time.Sleep(cfg.checkInterval)
 			continue
 		}
+		
+		// Apply demo mode enhancements if active
+		metrics = demoMode.EnhanceMetrics(metrics)
 
 		// Emit observation events for obvious runtime states so the timeline always shows activity
 		// (e.g. CrashLoopBackOff, Error, restart spikes) even if AI predictions are empty.
